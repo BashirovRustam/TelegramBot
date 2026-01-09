@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pycache
+*.pytest_cache/
+*.coverage
+*.egg
+*.egg-info/
+dist/
+build/
+*.log
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Environment variables
+.env
+.env.*
+
+# Database files (если используешь SQLite для dev)
+*.db
+*.sqlite3
+
+# Migrations (если хочешь игнорировать Alembic, но лучше хранить)
+# alembic/versions/
+
+# Pytest cache
+.pytest_cache/
+htmlcov/
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,12 @@
+fastapi[all]
+uvicorn
+aiogram
+asyncpg
+sqlalchemy[asyncio]
+databases
+alembic
+python-dotenv
+pydantic[email]
+aiosmtplib
+pytest
+httpx
