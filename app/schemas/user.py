@@ -1,15 +1,19 @@
+from datetime import datetime, date
+from typing import Optional, List
 from pydantic import BaseModel, Field
-from typing import Optional
-from datetime import datetime
 
-from app.db.models import UserRole
+from app.db.enums import RolesEnum, TaskStatusEnum
 
+
+# ==============================
+# USER SCHEMAS
+# ==============================
 
 class UserBase(BaseModel):
     telegram_id: int
-    username: Optional[str] = None
-    full_name: Optional[str] = None
-    role: UserRole = UserRole.USER
+    full_name: str
+    role: RolesEnum = RolesEnum.EXECUTOR
+    is_active: bool = True
 
 
 class UserCreate(UserBase):
@@ -17,17 +21,14 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
-    username: Optional[str] = None
     full_name: Optional[str] = None
-    role: Optional[UserRole] = None
+    role: Optional[RolesEnum] = None
     is_active: Optional[bool] = None
 
 
-class UserResponse(UserBase):
+class UserRead(UserBase):
     id: int
-    is_active: bool
     created_at: datetime
-    updated_at: datetime
-    
+
     class Config:
         from_attributes = True
