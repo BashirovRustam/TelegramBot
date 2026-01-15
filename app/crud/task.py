@@ -9,7 +9,7 @@ from app.db.enums import TaskStatusEnum
 from app.schemas.task import TaskCreate, TaskUpdate
 
 
-class TaskService:
+class TaskCRUD:
     """CRUD сервис для работы с задачами"""
 
     def __init__(self, session: AsyncSession):

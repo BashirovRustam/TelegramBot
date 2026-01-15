@@ -1,7 +1,7 @@
 # Настройки проекта и переменные окружения
 
 
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./test.db"
 
     # 🔹 Токен Telegram бота
-    BOT_TOKEN: str = "YOUR_TELEGRAM_BOT_TOKEN"
+    BOT_TOKEN: str
 
     # 🔹 Настройки FastAPI
     DEBUG: bool = True

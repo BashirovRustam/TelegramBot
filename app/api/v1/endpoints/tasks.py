@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
 from app.db.session import get_async_session
-from app.services.task_service import TaskService
+from app.crud.task import TaskService
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse, TaskWithDetails
 from app.db.models import TaskStatus
 

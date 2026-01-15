@@ -3,11 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
 
-from app.models.task_control import TaskAttachment
+from app.models.task_attachment import TaskAttachment
 from app.schemas.task_control import TaskAttachmentCreate, TaskAttachmentUpdate
 
 
-class TaskControlService:
+class TaskControlCRUD:
     """CRUD сервис для работы с вложениями задач"""
 
     def __init__(self, session: AsyncSession):

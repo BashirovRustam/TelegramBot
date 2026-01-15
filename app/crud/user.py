@@ -8,7 +8,7 @@ from app.db.enums import RolesEnum
 from app.schemas.user import UserCreate, UserUpdate
 
 
-class UserService:
+class UserCRUD:
     """CRUD сервис для работы с пользователями"""
 
     def __init__(self, session: AsyncSession):
