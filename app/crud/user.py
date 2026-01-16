@@ -1,158 +1,99 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
-
-from app.models.users import User
-from app.db.enums import RolesEnum
+from app.models.user import User, UserRoleEnum
 from app.schemas.user import UserCreate, UserUpdate
 
 
 class UserCRUD:
-    """CRUD сервис для работы с пользователями"""
-
-    def __init__(self, session: AsyncSession):
-        """
-        Инициализация сервиса с сессией SQLAlchemy
-        
-        Args:
-            session: Асинхронная сессия SQLAlchemy
-        """
-        self.session = session
-
-    async def create(self, user_data: UserCreate) -> User:
-        """
-        Создает нового пользователя
-        
-        Args:
-            user_data: Pydantic схема с данными для создания пользователя
-            
-        Returns:
-            Созданный пользователь (ORM объект)
-        """
-        user = User(
-            telegram_id=user_data.telegram_id,
-            full_name=user_data.full_name,
-            role=user_data.role,
-            is_active=user_data.is_active
-        )
-        self.session.add(user)
-        await self.session.commit()
-        await self.session.refresh(user)
-        return user
+    def __init__(self, db: AsyncSession):
+        self.db = db
 
     async def get(self, user_id: int) -> Optional[User]:
-        """
-        Получает пользователя по ID
-        
-        Args:
-            user_id: ID пользователя
-            
-        Returns:
-            Найденный пользователь или None
-        """
-        stmt = select(User).where(User.id == user_id)
-        result = await self.session.execute(stmt)
+        """Получить пользователя по ID"""
+        result = await self.db.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
+
+    async def get_all(self, skip: int = 0, limit: int = 100) -> List[User]:
+        """Получить всех пользователей с пагинацией"""
+        result = await self.db.execute(
+            select(User).offset(skip).limit(limit).order_by(User.created_at.desc())
+        )
+        return result.scalars().all()
 
     async def get_by_telegram_id(self, telegram_id: int) -> Optional[User]:
-        """
-        Получает пользователя по Telegram ID
-        
-        Args:
-            telegram_id: Telegram ID пользователя
-            
-        Returns:
-            Найденный пользователь или None
-        """
-        stmt = select(User).where(User.telegram_id == telegram_id)
-        result = await self.session.execute(stmt)
+        """Получить пользователя по telegram_id"""
+        result = await self.db.execute(select(User).where(User.telegram_id == telegram_id))
         return result.scalar_one_or_none()
 
-    async def get_all(self) -> List[User]:
-        """
-        Получает список всех пользователей
-        
-        Returns:
-            Список всех пользователей (ORM объекты)
-        """
-        stmt = select(User).order_by(User.created_at.desc())
-        result = await self.session.execute(stmt)
-        return result.scalars().all()
-
-    async def get_active_users(self) -> List[User]:
-        """
-        Получает список активных пользователей
-        
-        Returns:
-            Список активных пользователей (ORM объекты)
-        """
-        stmt = select(User).where(User.is_active == True).order_by(User.created_at.desc())
-        result = await self.session.execute(stmt)
-        return result.scalars().all()
-
-    async def update(self, user_id: int, user_data: UserUpdate) -> Optional[User]:
-        """
-        Обновляет данные пользователя (частичное обновление)
-        
-        Args:
-            user_id: ID пользователя
-            user_data: Pydantic схема с данными для обновления
-            
-        Returns:
-            Обновленный пользователь или None
-        """
-        # Получаем только установленные поля из Pydantic схемы
-        update_data = user_data.model_dump(exclude_unset=True)
-        
-        if not update_data:
-            return await self.get(user_id)
-        
-        stmt = (
-            update(User)
-            .where(User.id == user_id)
-            .values(**update_data)
-            .returning(User)
+    async def get_by_role(self, role: UserRoleEnum, skip: int = 0, limit: int = 100) -> List[User]:
+        """Получить пользователей по роли"""
+        result = await self.db.execute(
+            select(User)
+            .where(User.role == role)
+            .offset(skip)
+            .limit(limit)
+            .order_by(User.created_at.desc())
         )
+        return result.scalars().all()
+
+    async def get_active_masters(self, skip: int = 0, limit: int = 100) -> List[User]:
+        """Получить активных мастеров"""
+        result = await self.db.execute(
+            select(User)
+            .where(and_(User.role == UserRoleEnum.MASTER, User.is_active == True))
+            .offset(skip)
+            .limit(limit)
+            .order_by(User.created_at.desc())
+        )
+        return result.scalars().all()
+
+    async def create(self, user_create: UserCreate) -> User:
+        """Создать нового пользователя"""
+        db_user = User(**user_create.model_dump())
+        self.db.add(db_user)
+        await self.db.commit()
+        await self.db.refresh(db_user)
+        return db_user
+
+    async def update(self, user_id: int, user_update: UserUpdate) -> Optional[User]:
+        """Обновить данные пользователя"""
+        db_user = await self.get(user_id)
+        if not db_user:
+            return None
         
-        await self.session.execute(stmt)
-        await self.session.commit()
+        update_data = user_update.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(db_user, field, value)
         
-        return await self.get(user_id)
+        await self.db.commit()
+        await self.db.refresh(db_user)
+        return db_user
 
     async def delete(self, user_id: int) -> bool:
-        """
-        Удаляет пользователя
+        """Удалить пользователя"""
+        db_user = await self.get(user_id)
+        if not db_user:
+            return False
         
-        Args:
-            user_id: ID пользователя
-            
-        Returns:
-            True если пользователь был удален, иначе False
-        """
-        stmt = delete(User).where(User.id == user_id)
-        result = await self.session.execute(stmt)
-        await self.session.commit()
-        return result.rowcount > 0
+        await self.db.delete(db_user)
+        await self.db.commit()
+        return True
 
     async def get_with_relations(self, user_id: int) -> Optional[User]:
-        """
-        Получает пользователя со всеми связанными данными
-        
-        Args:
-            user_id: ID пользователя
-            
-        Returns:
-            Пользователь с загруженными связями или None
-        """
-        stmt = (
+        """Получить пользователя со связанными данными"""
+        result = await self.db.execute(
             select(User)
             .options(
-                selectinload(User.tasks_created),
-                selectinload(User.tasks_assigned),
-                selectinload(User.status_changes)
+                selectinload(User.master_profile),
+                selectinload(User.appointments_as_client)
             )
             .where(User.id == user_id)
         )
-        result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
+
+
+# Dependency function
+def get_user_crud(db: AsyncSession) -> UserCRUD:
+    return UserCRUD(db)
