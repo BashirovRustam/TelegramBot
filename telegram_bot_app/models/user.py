@@ -2,9 +2,10 @@ from datetime import datetime
 from sqlalchemy import String, Boolean, Integer, DateTime, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from telegram_bot_app.db.base import Base
+from enum import Enum as PyEnum
 
 
-class UserRoleEnum(str, Enum):
+class UserRoleEnum(str, PyEnum):
     CLIENT = "CLIENT"
     MASTER = "MASTER"
     ADMIN = "ADMIN"

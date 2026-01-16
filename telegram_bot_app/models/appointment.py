@@ -2,9 +2,10 @@ from datetime import datetime, date, time
 from sqlalchemy import String, Integer, ForeignKey, DateTime, Date, Time, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from telegram_bot_app.db.base import Base
+from enum import Enum as PyEnum
 
 
-class AppointmentStatusEnum(str, Enum):
+class AppointmentStatusEnum(str, PyEnum):
     BOOKED = "BOOKED"
     CANCELLED = "CANCELLED"
     COMPLETED = "COMPLETED"

@@ -6,6 +6,8 @@ from telegram_bot_app.models.user import UserRoleEnum
 
 class UserCreate(BaseModel):
     """Схема для создания пользователя"""
+    model_config = {"arbitrary_types_allowed": True, "from_attributes": True}
+    
     telegram_id: int = Field(..., description="Уникальный идентификатор Telegram пользователя")
     full_name: str = Field(..., min_length=1, max_length=255, description="Полное имя пользователя")
     role: UserRoleEnum = Field(default=UserRoleEnum.CLIENT, description="Роль пользователя")
@@ -14,6 +16,8 @@ class UserCreate(BaseModel):
 
 class UserUpdate(BaseModel):
     """Схема для обновления пользователя"""
+    model_config = {"arbitrary_types_allowed": True, "from_attributes": True}
+    
     telegram_id: Optional[int] = Field(None, description="Уникальный идентификатор Telegram пользователя")
     full_name: Optional[str] = Field(None, min_length=1, max_length=255, description="Полное имя пользователя")
     role: Optional[UserRoleEnum] = Field(None, description="Роль пользователя")
@@ -22,12 +26,11 @@ class UserUpdate(BaseModel):
 
 class UserRead(BaseModel):
     """Схема для вывода информации о пользователе"""
+    model_config = {"arbitrary_types_allowed": True, "from_attributes": True}
+    
     id: int = Field(..., description="Уникальный идентификатор пользователя в базе данных")
     telegram_id: int = Field(..., description="Уникальный идентификатор Telegram пользователя")
     full_name: str = Field(..., description="Полное имя пользователя")
     role: UserRoleEnum = Field(..., description="Роль пользователя")
     is_active: bool = Field(..., description="Активен ли пользователь")
     created_at: datetime = Field(..., description="Дата и время создания пользователя")
-
-    class Config:
-        from_attributes = True
