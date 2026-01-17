@@ -7,7 +7,11 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # 🔹 Строка подключения к БД
     # SQLite для локального теста
-    DATABASE_URL: str = "sqlite+aiosqlite:///./test.db"
+    # Настройки PostgreSQL
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/Telegram_bot_DB"
+
+    # Настройки SQLite (закомментированы)
+    # DATABASE_URL = "sqlite+aiosqlite:///./telegram_bot.db"
 
     # 🔹 Токен Telegram бота
     BOT_TOKEN: str

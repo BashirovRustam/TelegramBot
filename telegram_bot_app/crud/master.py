@@ -11,20 +11,32 @@ class MasterCRUD:
         self.db = db
 
     async def get(self, master_id: int) -> Optional[Master]:
-        """Получить мастера по ID"""
-        result = await self.db.execute(select(Master).where(Master.id == master_id))
+        """Получить мастера по ID с user (чтобы не было lazy load)"""
+        result = await self.db.execute(
+            select(Master)
+            .options(selectinload(Master.user))
+            .where(Master.id == master_id)
+        )
         return result.scalar_one_or_none()
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[Master]:
         """Получить всех мастеров с пагинацией"""
         result = await self.db.execute(
-            select(Master).offset(skip).limit(limit).order_by(Master.id)
+            select(Master)
+            .order_by(Master.id)
+            .offset(skip)
+            .limit(limit)
+            .options(selectinload(Master.user))
         )
         return result.scalars().all()
 
     async def get_by_user_id(self, user_id: int) -> Optional[Master]:
         """Получить мастера по ID пользователя"""
-        result = await self.db.execute(select(Master).where(Master.user_id == user_id))
+        result = await self.db.execute(
+            select(Master)
+            .options(selectinload(Master.user))
+            .where(Master.user_id == user_id)
+        )
         return result.scalar_one_or_none()
 
     async def get_by_salon_id(self, salon_id: int, skip: int = 0, limit: int = 100) -> List[Master]:
@@ -32,9 +44,10 @@ class MasterCRUD:
         result = await self.db.execute(
             select(Master)
             .where(Master.salon_id == salon_id)
+            .order_by(Master.id)
             .offset(skip)
             .limit(limit)
-            .order_by(Master.id)
+            .options(selectinload(Master.user))
         )
         return result.scalars().all()
 
@@ -43,8 +56,19 @@ class MasterCRUD:
         result = await self.db.execute(
             select(Master)
             .where(and_(Master.salon_id == salon_id, Master.is_active == True))
+            .order_by(Master.id)
             .offset(skip)
             .limit(limit)
+            .options(selectinload(Master.user))
+        )
+        return result.scalars().all()
+
+    async def get_active_by_salon_id_with_user(self, salon_id: int) -> List[Master]:
+        """Получить активных мастеров салона с загруженными данными пользователя"""
+        result = await self.db.execute(
+            select(Master)
+            .options(selectinload(Master.user))
+            .where(and_(Master.salon_id == salon_id, Master.is_active == True))
             .order_by(Master.id)
         )
         return result.scalars().all()
@@ -54,9 +78,10 @@ class MasterCRUD:
         result = await self.db.execute(
             select(Master)
             .where(Master.is_active == True)
+            .order_by(Master.id)
             .offset(skip)
             .limit(limit)
-            .order_by(Master.id)
+            .options(selectinload(Master.user))
         )
         return result.scalars().all()
 
@@ -73,11 +98,11 @@ class MasterCRUD:
         db_master = await self.get(master_id)
         if not db_master:
             return None
-        
+
         update_data = master_update.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(db_master, field, value)
-        
+
         await self.db.commit()
         await self.db.refresh(db_master)
         return db_master
@@ -87,13 +112,13 @@ class MasterCRUD:
         db_master = await self.get(master_id)
         if not db_master:
             return False
-        
+
         await self.db.delete(db_master)
         await self.db.commit()
         return True
 
     async def get_with_relations(self, master_id: int) -> Optional[Master]:
-        """Получить мастера со связанными данными"""
+        """Получить мастера со всеми связанными данными"""
         result = await self.db.execute(
             select(Master)
             .options(

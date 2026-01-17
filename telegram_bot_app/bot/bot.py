@@ -4,10 +4,10 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.redis import RedisStorage
 import redis.asyncio as redis
-
 from telegram_bot_app.core.config import settings
 from telegram_bot_app.bot.handlers.start import router as start_router
-from telegram_bot_app.bot.handlers.FSM_handlers import router as booking_router  # импорт FSM router
+from telegram_bot_app.bot.handlers.FSM_handlers_clean import router as booking_router  # импорт FSM router
+
 
 async def main():
     # 🔹 Подключаем Redis для FSM

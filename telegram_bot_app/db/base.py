@@ -7,11 +7,14 @@ from telegram_bot_app.core.config import settings  # читаем DATABASE_URL �
 class Base(DeclarativeBase):
     pass
 
-# 2️⃣ Engine — для async SQLite
+# 2️⃣ Engine — для async PostgreSQL
 engine = create_async_engine(
-    settings.DATABASE_URL,  # DATABASE_URL = "sqlite+aiosqlite:///./test.db"
-    echo=True,               # для логов SQL запросов
-    future=True
+    settings.DATABASE_URL,
+    echo=True,
+    pool_size=20,
+    max_overflow=0,
+    pool_pre_ping=True,
+    pool_recycle=3600
 )
 
 # 3️⃣ Session — фабрика сессий
@@ -25,3 +28,7 @@ async_session = sessionmaker(
 async def get_session() -> AsyncSession:
     async with async_session() as session:
         yield session
+
+
+
+

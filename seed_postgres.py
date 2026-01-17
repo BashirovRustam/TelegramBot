@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Script to seed SQLite database with sample data for Telegram Bot
-Creates 20+ records for each model
+Script to seed PostgreSQL database with sample data for Telegram Bot
+Creates 20+ records for each model with PostgreSQL optimizations
 """
 import asyncio
 import random
 from datetime import datetime, date, time, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from telegram_bot_app.db.base import engine, Base, async_session
 from telegram_bot_app.models import (
@@ -53,6 +53,15 @@ SERVICE_NAMES = [
     "Солярий", "Эпиляция", "Брови", "Ресницы", "Макияж"
 ]
 
+async def reset_sequences(session: AsyncSession):
+    """Reset PostgreSQL sequences after bulk insert"""
+    await session.execute(text("SELECT setval(pg_get_serial_sequence('users', 'id'), COALESCE(MAX(id), 1), true) FROM users"))
+    await session.execute(text("SELECT setval(pg_get_serial_sequence('salons', 'id'), COALESCE(MAX(id), 1), true) FROM salons"))
+    await session.execute(text("SELECT setval(pg_get_serial_sequence('services', 'id'), COALESCE(MAX(id), 1), true) FROM services"))
+    await session.execute(text("SELECT setval(pg_get_serial_sequence('masters', 'id'), COALESCE(MAX(id), 1), true) FROM masters"))
+    await session.execute(text("SELECT setval(pg_get_serial_sequence('appointments', 'id'), COALESCE(MAX(id), 1), true) FROM appointments"))
+    await session.commit()
+
 async def create_salons(session: AsyncSession) -> list[Salon]:
     """Create 20 salons"""
     salons = []
@@ -67,6 +76,10 @@ async def create_salons(session: AsyncSession) -> list[Salon]:
         session.add(salon)
     
     await session.commit()
+    # Refresh to get IDs from PostgreSQL
+    for salon in salons:
+        await session.refresh(salon)
+    
     print(f"✅ Created {len(salons)} salons")
     return salons
 
@@ -108,13 +121,16 @@ async def create_users(session: AsyncSession) -> list[User]:
         session.add(user)
     
     await session.commit()
+    # Refresh to get IDs from PostgreSQL
+    for user in users:
+        await session.refresh(user)
+    
     print(f"✅ Created {len(users)} users (20 clients, 8 masters, 2 admins)")
     return users
 
 async def create_services(session: AsyncSession, salons: list[Salon]) -> list[Service]:
     """Create 100+ services across all salons"""
     services = []
-    service_id = 1
     
     for salon in salons:
         # Each salon gets 5-8 services
@@ -131,9 +147,12 @@ async def create_services(session: AsyncSession, salons: list[Salon]) -> list[Se
             )
             services.append(service)
             session.add(service)
-            service_id += 1
     
     await session.commit()
+    # Refresh to get IDs from PostgreSQL
+    for service in services:
+        await session.refresh(service)
+    
     print(f"✅ Created {len(services)} services")
     return services
 
@@ -154,6 +173,10 @@ async def create_masters(session: AsyncSession, users: list[User], salons: list[
         session.add(master)
     
     await session.commit()
+    # Refresh to get IDs from PostgreSQL
+    for master in masters:
+        await session.refresh(master)
+    
     print(f"✅ Created {len(masters)} masters")
     return masters
 
@@ -259,12 +282,16 @@ async def create_appointments(session: AsyncSession, users: list[User], salons: 
         session.add(appointment)
     
     await session.commit()
+    # Refresh to get IDs from PostgreSQL
+    for appointment in appointments:
+        await session.refresh(appointment)
+    
     print(f"✅ Created {len(appointments)} appointments")
     return appointments
 
 async def seed_database():
-    """Main function to seed the database"""
-    print("🌱 Starting database seeding...")
+    """Main function to seed the PostgreSQL database"""
+    print("🌱 Starting PostgreSQL database seeding...")
     
     async with engine.begin() as conn:
         # Drop all tables and recreate them
@@ -282,7 +309,10 @@ async def seed_database():
         schedules = await create_master_schedules(session, masters)
         appointments = await create_appointments(session, users, salons, masters, services)
         
-        print("\n🎉 Database seeding completed successfully!")
+        # Reset PostgreSQL sequences
+        await reset_sequences(session)
+        
+        print("\n🎉 PostgreSQL database seeding completed successfully!")
         print(f"📊 Summary:")
         print(f"   - Salons: {len(salons)}")
         print(f"   - Users: {len(users)}")
