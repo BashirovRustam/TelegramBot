@@ -5,6 +5,13 @@ from sqlalchemy.orm import selectinload
 from telegram_bot_app.models.user import User, UserRoleEnum
 from telegram_bot_app.schemas.user import UserCreate, UserUpdate
 
+from typing import List, Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_
+from sqlalchemy.orm import selectinload
+from telegram_bot_app.models.user import User, UserRoleEnum
+from telegram_bot_app.schemas.user import UserCreate, UserUpdate
+
 
 class UserCRUD:
     def __init__(self, db: AsyncSession):
@@ -53,8 +60,7 @@ class UserCRUD:
         """Создать нового пользователя"""
         db_user = User(**user_create.model_dump())
         self.db.add(db_user)
-        await self.db.commit()
-        await self.db.refresh(db_user)
+        await self.db.flush()  # flush вместо commit
         return db_user
 
     async def update(self, user_id: int, user_update: UserUpdate) -> Optional[User]:
@@ -62,13 +68,12 @@ class UserCRUD:
         db_user = await self.get(user_id)
         if not db_user:
             return None
-        
+
         update_data = user_update.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(db_user, field, value)
-        
-        await self.db.commit()
-        await self.db.refresh(db_user)
+
+        await self.db.flush()  # flush вместо commit
         return db_user
 
     async def delete(self, user_id: int) -> bool:
@@ -76,9 +81,9 @@ class UserCRUD:
         db_user = await self.get(user_id)
         if not db_user:
             return False
-        
+
         await self.db.delete(db_user)
-        await self.db.commit()
+        await self.db.flush()  # flush вместо commit
         return True
 
     async def get_with_relations(self, user_id: int) -> Optional[User]:
@@ -92,6 +97,11 @@ class UserCRUD:
             .where(User.id == user_id)
         )
         return result.scalar_one_or_none()
+
+
+# Dependency function
+def get_user_crud(db: AsyncSession) -> UserCRUD:
+    return UserCRUD(db)
 
 
 # Dependency function

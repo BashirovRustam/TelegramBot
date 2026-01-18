@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, Boolean, Integer, DateTime, Enum
+from sqlalchemy import String, Boolean, Integer, DateTime, Enum, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from telegram_bot_app.db.base import Base
 from enum import Enum as PyEnum
@@ -14,8 +14,8 @@ class UserRoleEnum(str, PyEnum):
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    telegram_id: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRoleEnum] = mapped_column(Enum(UserRoleEnum), nullable=False, default=UserRoleEnum.CLIENT)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

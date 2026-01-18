@@ -1,5 +1,5 @@
 from datetime import datetime, date, time
-from sqlalchemy import String, Integer, ForeignKey, DateTime, Date, Time, Enum
+from sqlalchemy import String, Integer, ForeignKey, DateTime, Date, Time, Enum, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from telegram_bot_app.db.base import Base
 from enum import Enum as PyEnum
@@ -15,7 +15,7 @@ class Appointment(Base):
     __tablename__ = "appointments"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    client_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    client_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
     salon_id: Mapped[int] = mapped_column(Integer, ForeignKey("salons.id"), nullable=False)
     master_id: Mapped[int] = mapped_column(Integer, ForeignKey("masters.id"), nullable=False)
     service_id: Mapped[int] = mapped_column(Integer, ForeignKey("services.id"), nullable=False)

@@ -107,6 +107,8 @@ class AppointmentCRUD:
         exclude_appointment_id: Optional[int] = None
     ) -> bool:
         """Проверить конфликт времени записи"""
+        print(f"DEBUG CRUD: Checking conflict - master_id={master_id}, date={appointment_date}, start={time_start}, end={time_end}")
+        
         query = select(Appointment).where(
             and_(
                 Appointment.master_id == master_id,
@@ -123,8 +125,15 @@ class AppointmentCRUD:
         if exclude_appointment_id:
             query = query.where(Appointment.id != exclude_appointment_id)
         
+        print(f"DEBUG CRUD: SQL query = {query}")
+        
         result = await self.db.execute(query)
-        return result.scalar_one_or_none() is not None
+        conflict_appointment = result.scalar_one_or_none()
+        
+        print(f"DEBUG CRUD: Conflict appointment = {conflict_appointment}")
+        print(f"DEBUG CRUD: Has conflict = {conflict_appointment is not None}")
+        
+        return conflict_appointment is not None
 
     async def create(self, appointment_create: AppointmentCreate) -> Appointment:
         """Создать новую запись"""
