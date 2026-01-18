@@ -7,6 +7,7 @@ import redis.asyncio as redis
 from telegram_bot_app.core.config import settings
 from telegram_bot_app.bot.handlers.start import router as start_router
 from telegram_bot_app.bot.handlers.FSM_handlers_clean import router as booking_router  # импорт FSM router
+from telegram_bot_app.bot.handlers.my_appointments_hendler import router as my_appointments_router
 
 
 async def main():
@@ -28,6 +29,7 @@ async def main():
     # 🔹 Роутеры
     dp.include_router(start_router)       # обычные команды /start и т.д.
     dp.include_router(booking_router)     # FSM для "Создать запись"
+    dp.include_router(my_appointments_router)  # Handler для "Мои записи"
 
     # 🔹 Удаляем старые вебхуки (если были) и стартуем polling
     await bot.delete_webhook(drop_pending_updates=True)

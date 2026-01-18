@@ -253,10 +253,10 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext):
     print(
         f"DEBUG FSM: Extracted data - salon_id={salon_id}, service_id={service_id}, master_id={master_id}, date={selected_date}, time={selected_time}")
 
-    client_id = callback.from_user.id
-    client_name = callback.from_user.full_name or f"User_{client_id}"
+    telegram_id = callback.from_user.id
+    client_name = callback.from_user.full_name or f"User_{telegram_id}"
 
-    print(f"DEBUG FSM: Client ID = {client_id}")
+    print(f"DEBUG FSM: Telegram ID = {telegram_id}")
 
     if not all([salon_id, service_id, master_id, selected_date, selected_time]):
         await callback.message.edit_text(
@@ -269,14 +269,16 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext):
         # Создаем/получаем пользователя
         user_service = UserService(db)
         user = await user_service.get_or_create_user(
-            telegram_id=client_id,
+            telegram_id=telegram_id,
             full_name=client_name
         )
 
-        # Создаем запись
+        print(f"DEBUG FSM: User created/found - id={user.id}, telegram_id={user.telegram_id}")
+
+        # Создаем запись используя user.id (а не telegram_id)
         appointment_service = AppointmentService(db)
         result = await appointment_service.create_appointment(
-            client_id=client_id,
+            client_id=user.id,  # ВАЖНО: используем user.id
             salon_id=salon_id,
             master_id=master_id,
             service_id=service_id,

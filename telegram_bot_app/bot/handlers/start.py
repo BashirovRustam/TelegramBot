@@ -10,7 +10,7 @@ router = Router()
 async def start_handler(message: Message):
     text = (
         "👋 Привет!\n\n"
-        "Я — *Staly Bot* 🤖\n"
+        "Я — *Staly Bot* 🤖 (но пока еще в тестовом режиме)\n"
         "Помогаю оформить онлайн-запись в салон красоты.\n\n"
         "📌 *Что я умею:*\n"
         "• создавать онлайн-запись\n"

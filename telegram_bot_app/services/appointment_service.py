@@ -15,7 +15,7 @@ class AppointmentService:
 
     async def create_appointment(
             self,
-            client_id: int,
+            client_id: int,  # Теперь это users.id, а не telegram_id
             salon_id: int,
             master_id: int,
             service_id: int,

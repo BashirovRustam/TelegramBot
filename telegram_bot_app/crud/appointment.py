@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
 from sqlalchemy.orm import selectinload
 from telegram_bot_app.models.appointment import Appointment, AppointmentStatusEnum
+from telegram_bot_app.models.user import User
+from telegram_bot_app.models.master import Master
 from telegram_bot_app.schemas.appointment import AppointmentCreate, AppointmentUpdate
 
 
@@ -182,7 +184,7 @@ class AppointmentCRUD:
             .options(
                 selectinload(Appointment.client),
                 selectinload(Appointment.salon),
-                selectinload(Appointment.master),
+                selectinload(Appointment.master).selectinload(Master.user),
                 selectinload(Appointment.service)
             )
             .where(Appointment.id == appointment_id)

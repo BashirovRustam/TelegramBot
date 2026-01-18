@@ -33,9 +33,8 @@ class UserService:
         if user:
             return user
 
-        # Создаем нового пользователя
+        # Создаем нового пользователя (ID автогенерируется)
         new_user = User(
-            id=telegram_id,  # Используем telegram_id как id
             telegram_id=telegram_id,
             full_name=full_name,
             role=role,
@@ -44,6 +43,33 @@ class UserService:
 
         self.db.add(new_user)
         await self.db.flush()  # flush вместо commit
+
+        return new_user
+
+    async def create_user_without_telegram(
+            self,
+            full_name: str,
+            role: UserRoleEnum = UserRoleEnum.MASTER
+    ) -> User:
+        """
+        Создать пользователя без Telegram ID (например, мастера).
+
+        Args:
+            full_name: Полное имя пользователя
+            role: Роль пользователя (по умолчанию MASTER)
+
+        Returns:
+            User: Объект пользователя
+        """
+        new_user = User(
+            telegram_id=None,  # Нет Telegram ID
+            full_name=full_name,
+            role=role,
+            is_active=True
+        )
+
+        self.db.add(new_user)
+        await self.db.flush()
 
         return new_user
 
