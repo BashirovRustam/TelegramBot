@@ -25,11 +25,17 @@ class Appointment(Base):
     status: Mapped[AppointmentStatusEnum] = mapped_column(Enum(AppointmentStatusEnum), nullable=False, default=AppointmentStatusEnum.BOOKED)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    # Relationships
-    client: Mapped["User"] = relationship("User", back_populates="appointments_as_client", foreign_keys=[client_id])
-    salon: Mapped["Salon"] = relationship("Salon", back_populates="appointments")
-    master: Mapped["Master"] = relationship("Master", back_populates="appointments")
-    service: Mapped["Service"] = relationship("Service", back_populates="appointments")
+    # Relationships с lazy='joined' для автоматической загрузки
+    client: Mapped["User"] = relationship("User", back_populates="appointments_as_client", foreign_keys=[client_id], lazy="joined")
+    salon: Mapped["Salon"] = relationship("Salon", back_populates="appointments", lazy="joined")
+    master: Mapped["Master"] = relationship("Master", back_populates="appointments", lazy="joined")
+    service: Mapped["Service"] = relationship("Service", back_populates="appointments", lazy="joined")
+
+    @property
+    def client_name(self):
+        if self.client and hasattr(self.client, 'full_name'):
+            return self.client.full_name
+        return "БЕЗ ИМЕНИ"
 
     def __repr__(self) -> str:
         return f"Appointment(id={self.id}, client_id={self.client_id}, date={self.date}, status={self.status})"

@@ -289,7 +289,6 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext):
         # Коммитим все изменения
         await db.commit()
 
-    print(f"DEBUG FSM: Appointment service result = {result}")
 
     if result:
         from datetime import datetime
@@ -311,7 +310,7 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext):
             f"👨‍💼 Мастер: {data.get('master_name', 'Не указан')}\n"
             f"📅 Дата: {formatted_date}\n"
             f"🕐 Время: {selected_time}\n"
-            f"💰 Цена: {result['service_price']}₽\n"
+            f"💰 Цена: {result['service_price']} тг.\n"
             f"⏱️ Длительность: {result['service_duration']} минут\n\n"
             f"📍 Приходите за 5 минут до начала записи\n"
             f"📱 Для отмены записи используйте кнопку '📋 Мои записи'"
@@ -365,7 +364,7 @@ async def show_confirmation_keyboard(message: Message, state: FSMContext):
         f"👨‍💼 Мастер: {master_name}\n"
         f"📅 Дата: {formatted_date}\n"
         f"🕐 Время: {selected_time}\n"
-        f"💰 Цена: {price}₽\n\n"
+        f"💰 Цена: {price} тг.\n\n"
         f"Все верно? Подтвердите запись:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
     )
@@ -528,7 +527,7 @@ async def show_services_for_salon(message: Message, state: FSMContext, salon_id:
         for i, service in enumerate(services, start=1):
             row.append(
                 InlineKeyboardButton(
-                    text=f"💅 {service.name} ({service.duration_minutes}мин) - {service.price}₽",
+                    text=f"💅 {service.name} ({service.duration_minutes}мин) - {service.price} тг.",
                     callback_data=f"service:{service.id}"
                 )
             )
