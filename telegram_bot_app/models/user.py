@@ -29,3 +29,6 @@ class User(Base):
 
     def __repr__(self) -> str:
         return f"User(id={self.id}, telegram_id={self.telegram_id}, full_name='{self.full_name}', role={self.role})"
+
+    def __str__(self):
+        return f"{self.full_name}"

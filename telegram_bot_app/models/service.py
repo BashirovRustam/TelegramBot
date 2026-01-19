@@ -20,3 +20,6 @@ class Service(Base):
 
     def __repr__(self) -> str:
         return f"Service(id={self.id}, name='{self.name}', duration={self.duration_minutes}min, price={self.price})"
+
+    def __str__(self):
+        return f"{self.name}"
