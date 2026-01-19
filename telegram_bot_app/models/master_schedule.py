@@ -15,6 +15,11 @@ class MasterSchedule(Base):
 
     # Relationships
     master: Mapped["Master"] = relationship("Master", back_populates="schedules")
+    
+    @property
+    def master_name(self):
+        # Простой fallback - показываем ID мастера
+        return f"Мастер #{self.master_id}"
 
     def __repr__(self) -> str:
         return f"MasterSchedule(id={self.id}, master_id={self.master_id}, weekday={self.weekday}, {self.time_from}-{self.time_to})"

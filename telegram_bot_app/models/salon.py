@@ -19,3 +19,6 @@ class Salon(Base):
 
     def __repr__(self) -> str:
         return f"Salon(id={self.id}, name='{self.name}', address='{self.address}')"
+
+    def __str__(self):
+        return f"{self.name}"
