@@ -2,14 +2,23 @@ from sqladmin import ModelView
 from sqlalchemy.orm import selectinload
 from telegram_bot_app.models.user import User
 
-
 class UserAdmin(ModelView, model=User):
+    name = "Пользователь"
+    name_plural = "Пользователи"
+
     column_list = [
         "telegram_id",
         "full_name",
         "role",
         "is_active",
         "created_at"
+    ]
+
+    # Только эти поля можно редактировать
+    form_columns = [
+        "full_name",
+        "role",
+        "is_active"
     ]
 
     column_labels = {
@@ -20,24 +29,8 @@ class UserAdmin(ModelView, model=User):
         "created_at": "Дата создания"
     }
 
-    column_searchable_list = [
-        "full_name",
-        "telegram_id"
-    ]
-
-    column_sortable_list = [
-        "full_name",
-        "role",
-        "created_at"
-    ]
-
-    form_columns = [
-        "telegram_id",
-        "full_name",
-        "role",
-        "is_active"
-    ]
-
+    column_searchable_list = ["full_name", "telegram_id"]
+    column_sortable_list = ["full_name", "role", "created_at"]
     column_default_sort = [("created_at", False)]
 
     def get_query(self):

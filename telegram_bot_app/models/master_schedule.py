@@ -3,6 +3,11 @@ from sqlalchemy import Integer, ForeignKey, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from telegram_bot_app.db.base import Base
 
+from datetime import time
+from sqlalchemy import Integer, ForeignKey, Time
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from telegram_bot_app.db.base import Base
+
 
 class MasterSchedule(Base):
     __tablename__ = "master_schedules"
@@ -13,12 +18,13 @@ class MasterSchedule(Base):
     time_from: Mapped[time] = mapped_column(Time, nullable=False)
     time_to: Mapped[time] = mapped_column(Time, nullable=False)
 
-    # Relationships
-    master: Mapped["Master"] = relationship("Master", back_populates="schedules")
-    
+    # Relationships с lazy='joined' для автоматической загрузки
+    master: Mapped["Master"] = relationship("Master", back_populates="schedules", lazy="joined")
+
     @property
     def master_name(self):
-        # Простой fallback - показываем ID мастера
+        if self.master and self.master.user:
+            return self.master.user.full_name
         return f"Мастер #{self.master_id}"
 
     def __repr__(self) -> str:
