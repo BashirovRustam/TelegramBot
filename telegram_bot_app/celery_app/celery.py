@@ -25,22 +25,16 @@ celery_app.conf.update(
 
 # Периодические задачи (beat schedule)
 celery_app.conf.beat_schedule = {
-    # 🧪 ТЕСТ: Проверка напоминаний за 2 минуты (каждую минуту)
-    "send-reminders-2-minutes-TEST": {
+    # ⏰ Проверка напоминаний за 60 минут (каждую минуту для точности)
+    "send-reminders-60-minutes": {
         "task": "telegram_bot_app.celery_app.tasks.send_appointment_reminders",
         "schedule": crontab(minute="*"),  # каждую минуту
-        "kwargs": {"minutes_before": 2},
+        "kwargs": {"minutes_before": 60},  # за 60 минут = 1 час
     },
-    # Проверка напоминаний за 1 день
+    # 📅 Проверка напоминаний за 1 день (раз в день в 10:00)
     "send-reminders-1-day": {
         "task": "telegram_bot_app.celery_app.tasks.send_appointment_reminders",
         "schedule": crontab(hour=10, minute=0),  # каждый день в 10:00
         "kwargs": {"hours_before": 24},
-    },
-    # Проверка напоминаний за 1 час
-    "send-reminders-1-hour": {
-        "task": "telegram_bot_app.celery_app.tasks.send_appointment_reminders",
-        "schedule": crontab(minute="*/30"),  # каждые 30 минут
-        "kwargs": {"hours_before": 1},
     },
 }

@@ -317,7 +317,7 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext):
             f"⏱️ Длительность: {result['service_duration']} минут\n\n"
             f"📝 Приходите за 5 минут до начала записи\n"
             f"📱 Для отмены записи используйте кнопку '📋 Мои записи'\n"
-            f"🔔 Вам придет напоминание за день до визита"
+            f"🔔 Вам придет напоминание за 1 час до визита"
         )
     else:
         await callback.message.edit_text(

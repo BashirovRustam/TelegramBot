@@ -89,55 +89,85 @@ def send_appointment_reminders(minutes_before: int = None, hours_before: int = N
     Отправка напоминаний о предстоящих записях
 
     Args:
-        hours_before: за сколько часов до записи отправлять (1 или 24)
-        minutes_before: за сколько минут до записи отправлять (для тестов)
+        minutes_before: за сколько минут до записи отправлять
+        hours_before: за сколько часов до записи отправлять (24 или 1)
     """
     return run_async(_send_reminders_async(minutes_before=minutes_before, hours_before=hours_before))
 
 
-
 async def _send_reminders_async(minutes_before: int = None, hours_before: int = None):
     """Асинхронная отправка напоминаний о записи за N минут/часов до начала"""
-    bot = Bot(token=settings.BOT_TOKEN)
+    bot = Bot(
+        token=settings.BOT_TOKEN,
+        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
+    )
 
     try:
         now = datetime.now()
 
-        # Определяем lead_time (временной промежуток до записи)
+        # Определяем за сколько минут до записи отправлять
         if minutes_before is not None:
-            lead_time = timedelta(minutes=minutes_before)
-            reminder_text = f"Напоминаем о записи через {minutes_before} минут"
+            target_minutes = minutes_before
+            reminder_text = f"через {minutes_before} минут" if minutes_before > 1 else "через 1 минуту"
+            emoji = "⏰"
         elif hours_before is not None:
-            lead_time = timedelta(hours=hours_before)
-            # грамотно склоняем слово "час"
+            target_minutes = hours_before * 60
             if hours_before == 1:
-                hour_text = "час"
+                reminder_text = "через 1 час"
+            elif hours_before == 24:
+                reminder_text = "завтра"
             else:
-                hour_text = "часа"
-            reminder_text = f"Напоминаем о записи через {hours_before} {hour_text}"
+                reminder_text = f"через {hours_before} часа"
+            emoji = "📅" if hours_before == 24 else "⏰"
         else:
-            return  # ничего не указано, выходим
+            return
+
+        # Вычисляем целевое время записи (now + target_minutes)
+        target_appointment_time = now + timedelta(minutes=target_minutes)
+
+        # Окно поиска: ±30 секунд для точности
+        window_start = target_appointment_time - timedelta(seconds=30)
+        window_end = target_appointment_time + timedelta(seconds=30)
+
+        print(f"🔍 Checking reminders: {target_minutes} minutes before")
+        print(f"   Current time: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"   Looking for appointments at: {target_appointment_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"   Search window: {window_start.strftime('%H:%M:%S')} - {window_end.strftime('%H:%M:%S')}")
 
         async with async_session() as db:
-            # Берем все BOOKED записи
+            # Получаем все BOOKED записи на целевую дату
             result = await db.execute(
                 select(Appointment)
-                .where(Appointment.status == AppointmentStatusEnum.BOOKED)
+                .where(
+                    and_(
+                        Appointment.status == AppointmentStatusEnum.BOOKED,
+                        Appointment.date == target_appointment_time.date()
+                    )
+                )
             )
-            appointments = result.scalars().all()
+            all_appointments = result.scalars().all()
 
-            for apt in appointments:
+            print(f"   📊 Total BOOKED appointments on {target_appointment_time.date()}: {len(all_appointments)}")
+
+            # Покажем ВСЕ записи для отладки
+            for apt in all_appointments:
+                appointment_datetime = datetime.combine(apt.date, apt.time_start)
+                time_diff = (appointment_datetime - target_appointment_time).total_seconds() / 60
+                print(
+                    f"      - Appointment #{apt.id}: {apt.time_start} (target: {target_appointment_time.time()}, diff: {time_diff:.1f} min)")
+
+            sent_count = 0
+            for apt in all_appointments:
                 if not apt.client:
                     continue
 
-                # datetime записи
+                # Собираем полный datetime записи
                 appointment_datetime = datetime.combine(apt.date, apt.time_start)
 
-                # время до записи
-                time_until_appointment = appointment_datetime - now
+                # Проверяем попадает ли в окно
+                if window_start <= appointment_datetime <= window_end:
+                    print(f"   ✅ MATCH! Appointment #{apt.id} at {apt.time_start} - SENDING NOTIFICATION")
 
-                # если осталось ровно lead_time (с точностью в минуту)
-                if timedelta(0) <= time_until_appointment <= lead_time:
                     # Форматирование даты
                     months = {
                         1: 'января', 2: 'февраля', 3: 'марта', 4: 'апреля',
@@ -146,9 +176,8 @@ async def _send_reminders_async(minutes_before: int = None, hours_before: int = 
                     }
                     formatted_date = f"{apt.date.day} {months[apt.date.month]}"
 
-                    # Формируем сообщение
                     message = (
-                        f"⏰ *{reminder_text}!* \n\n"
+                        f"{emoji} *Напоминание о записи {reminder_text}!*\n\n"
                         f"📋 Номер: #{apt.id}\n"
                         f"🏛️ Салон: {apt.salon.name}\n"
                         f"💅 Услуга: {apt.service.name}\n"
@@ -158,15 +187,24 @@ async def _send_reminders_async(minutes_before: int = None, hours_before: int = 
                         f"Ждем вас! 😊"
                     )
 
-                    await bot.send_message(chat_id=apt.client.telegram_id, text=message)
-                    print(f"✅ Reminder sent for appointment #{apt.id}")
+                    try:
+                        await bot.send_message(
+                            chat_id=apt.client.telegram_id,
+                            text=message
+                        )
+                        print(f"   ✅ Reminder sent for appointment #{apt.id}")
+                        sent_count += 1
+                    except Exception as e:
+                        print(f"   ❌ Error sending to #{apt.id}: {e}")
 
+            print(f"   📤 Total reminders sent: {sent_count}")
+
+    except Exception as e:
+        print(f"❌ Error in send_reminders: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         await bot.session.close()
-
-
-
-
 
 
 @celery_app.task(name="telegram_bot_app.celery_app.tasks.send_cancellation_notification")
