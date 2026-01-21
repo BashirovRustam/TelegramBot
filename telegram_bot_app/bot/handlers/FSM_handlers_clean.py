@@ -289,8 +289,11 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext):
         # Коммитим все изменения
         await db.commit()
 
-
     if result:
+        # 🔔 ОТПРАВЛЯЕМ ЗАДАЧУ В CELERY
+        from telegram_bot_app.celery_app.tasks import send_appointment_confirmation
+        send_appointment_confirmation.delay(result['id'])
+
         from datetime import datetime
         date_obj = datetime.strptime(selected_date, "%Y-%m-%d").date()
         months = {
@@ -312,8 +315,9 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext):
             f"🕐 Время: {selected_time}\n"
             f"💰 Цена: {result['service_price']} тг.\n"
             f"⏱️ Длительность: {result['service_duration']} минут\n\n"
-            f"📍 Приходите за 5 минут до начала записи\n"
-            f"📱 Для отмены записи используйте кнопку '📋 Мои записи'"
+            f"📝 Приходите за 5 минут до начала записи\n"
+            f"📱 Для отмены записи используйте кнопку '📋 Мои записи'\n"
+            f"🔔 Вам придет напоминание за 1 час до визита"
         )
     else:
         await callback.message.edit_text(
