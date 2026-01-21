@@ -1,9 +1,11 @@
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+
 from telegram_bot_app.models.user import User, UserRoleEnum
 from telegram_bot_app.crud.user import UserCRUD
 
+import logging
+logger = logging.getLogger(__name__)
 
 class UserService:
     def __init__(self, db: AsyncSession):
@@ -16,67 +18,127 @@ class UserService:
             full_name: str,
             role: UserRoleEnum = UserRoleEnum.CLIENT
     ) -> User:
-        """
-        Получить пользователя или создать, если не существует.
+        """Получить пользователя или создать, если не существует."""
 
-        Args:
-            telegram_id: Telegram ID пользователя
-            full_name: Полное имя пользователя
-            role: Роль пользователя (по умолчанию CLIENT)
-
-        Returns:
-            User: Объект пользователя
-        """
-        # Проверяем, существует ли пользователь
-        user = await self.user_crud.get_by_telegram_id(telegram_id)
-
-        if user:
-            return user
-
-        # Создаем нового пользователя (ID автогенерируется)
-        new_user = User(
-            telegram_id=telegram_id,
-            full_name=full_name,
-            role=role,
-            is_active=True
+        logger.debug(
+            "Поиск/создание пользователя: telegram_id=%d, name=%s",
+            telegram_id, full_name
         )
 
-        self.db.add(new_user)
-        await self.db.flush()  # flush вместо commit
+        try:
+            # Проверяем, существует ли пользователь
+            user = await self.user_crud.get_by_telegram_id(telegram_id)
 
-        return new_user
+            if user:
+                logger.debug(
+                    "Пользователь найден: user_id=%d, telegram_id=%d",
+                    user.id, telegram_id
+                )
+                return user
+
+            # Создаем нового пользователя
+            new_user = User(
+                telegram_id=telegram_id,
+                full_name=full_name,
+                role=role,
+                is_active=True
+            )
+
+            self.db.add(new_user)
+            await self.db.flush()
+
+            logger.info(
+                "✅ Создан новый пользователь: user_id=%d, telegram_id=%d, name=%s",
+                new_user.id, telegram_id, full_name
+            )
+
+            return new_user
+
+        except Exception as e:
+            logger.error(
+                "Ошибка создания/получения пользователя telegram_id=%d: %s",
+                telegram_id, e, exc_info=True
+            )
+            raise
 
     async def create_user_without_telegram(
             self,
             full_name: str,
             role: UserRoleEnum = UserRoleEnum.MASTER
     ) -> User:
-        """
-        Создать пользователя без Telegram ID (например, мастера).
+        """Создать пользователя без Telegram ID (например, мастера)."""
 
-        Args:
-            full_name: Полное имя пользователя
-            role: Роль пользователя (по умолчанию MASTER)
-
-        Returns:
-            User: Объект пользователя
-        """
-        new_user = User(
-            telegram_id=None,  # Нет Telegram ID
-            full_name=full_name,
-            role=role,
-            is_active=True
+        logger.info(
+            "Создание пользователя без Telegram: name=%s, role=%s",
+            full_name, role
         )
 
-        self.db.add(new_user)
-        await self.db.flush()
+        try:
+            new_user = User(
+                telegram_id=None,
+                full_name=full_name,
+                role=role,
+                is_active=True
+            )
 
-        return new_user
+            self.db.add(new_user)
+            await self.db.flush()
+
+            logger.info(
+                "✅ Создан пользователь (без Telegram): user_id=%d, name=%s",
+                new_user.id, full_name
+            )
+
+            return new_user
+
+        except Exception as e:
+            logger.error(
+                "Ошибка создания пользователя без Telegram: %s",
+                e, exc_info=True
+            )
+            raise
 
     async def get_by_telegram_id(self, telegram_id: int) -> Optional[User]:
         """Получить пользователя по Telegram ID"""
-        return await self.user_crud.get_by_telegram_id(telegram_id)
+        logger_user.debug("Поиск пользователя по telegram_id=%d", telegram_id)
+
+        try:
+            user = await self.user_crud.get_by_telegram_id(telegram_id)
+
+            if user:
+                logger_user.debug(
+                    "Пользователь найден: user_id=%d, telegram_id=%d",
+                    user.id, telegram_id
+                )
+            else:
+                logger_user.debug("Пользователь не найден: telegram_id=%d", telegram_id)
+
+            return user
+
+        except Exception as e:
+            logger_user.error(
+                "Ошибка поиска пользователя telegram_id=%d: %s",
+                telegram_id, e, exc_info=True
+            )
+            return None
 
     async def get_by_id(self, user_id: int) -> Optional[User]:
         """Получить пользователя по ID"""
-        return await self.user_crud.get(user_id)
+        logger_user.debug("Поиск пользователя по user_id=%d", user_id)
+
+        try:
+            user = await self.user_crud.get(user_id)
+
+            if user:
+                logger_user.debug("Пользователь найден: user_id=%d", user_id)
+            else:
+                logger_user.debug("Пользователь не найден: user_id=%d", user_id)
+
+            return user
+
+        except Exception as e:
+            logger_user.error(
+                "Ошибка поиска пользователя user_id=%d: %s",
+                user_id, e, exc_info=True
+            )
+            return None
