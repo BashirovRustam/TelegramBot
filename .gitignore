@@ -44,3 +44,5 @@ Thumbs.db
 
 .env
 README.md
+
+celerybeat-schedule.db
