@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta
-from celery import shared_task
+import logging
 from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
@@ -9,6 +9,9 @@ from telegram_bot_app.celery_app.celery import celery_app
 from telegram_bot_app.core.config import settings
 from telegram_bot_app.db.base import async_session
 from telegram_bot_app.models.appointment import Appointment, AppointmentStatusEnum
+
+# Создаем логгер
+logger = logging.getLogger(__name__)
 
 
 def run_async(coro):
@@ -32,6 +35,8 @@ def send_appointment_confirmation(appointment_id: int):
 
 async def _send_confirmation_async(appointment_id: int):
     """Асинхронная отправка подтверждения"""
+    logger.info("Отправка подтверждения для записи #%d", appointment_id)
+
     bot = Bot(
         token=settings.BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
@@ -46,7 +51,7 @@ async def _send_confirmation_async(appointment_id: int):
             appointment = result.scalar_one_or_none()
 
             if not appointment or not appointment.client:
-                print(f"Appointment {appointment_id} not found or no client")
+                logger.warning("Запись #%d не найдена или нет клиента", appointment_id)
                 return
 
             # Форматирование даты
@@ -73,12 +78,17 @@ async def _send_confirmation_async(appointment_id: int):
                 chat_id=appointment.client.telegram_id,
                 text=message
             )
-            print(f"✅ Confirmation sent for appointment #{appointment_id}")
+
+            logger.info(
+                "✅ Подтверждение отправлено: appointment_id=%d, client_id=%d",
+                appointment_id, appointment.client.telegram_id
+            )
 
     except Exception as e:
-        print(f"❌ Error sending confirmation: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(
+            "Ошибка отправки подтверждения для записи #%d: %s",
+            appointment_id, e, exc_info=True
+        )
     finally:
         await bot.session.close()
 
@@ -122,17 +132,15 @@ async def _send_reminders_async(minutes_before: int = None, hours_before: int = 
         else:
             return
 
-        # Вычисляем целевое время записи (now + target_minutes)
+        # Вычисляем целевое время записи
         target_appointment_time = now + timedelta(minutes=target_minutes)
-
-        # Окно поиска: ±30 секунд для точности
         window_start = target_appointment_time - timedelta(seconds=30)
         window_end = target_appointment_time + timedelta(seconds=30)
 
-        print(f"🔍 Checking reminders: {target_minutes} minutes before")
-        print(f"   Current time: {now.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"   Looking for appointments at: {target_appointment_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"   Search window: {window_start.strftime('%H:%M:%S')} - {window_end.strftime('%H:%M:%S')}")
+        logger.info(
+            "Проверка напоминаний за %d минут (target: %s)",
+            target_minutes, target_appointment_time.strftime('%Y-%m-%d %H:%M:%S')
+        )
 
         async with async_session() as db:
             # Получаем все BOOKED записи на целевую дату
@@ -147,14 +155,10 @@ async def _send_reminders_async(minutes_before: int = None, hours_before: int = 
             )
             all_appointments = result.scalars().all()
 
-            print(f"   📊 Total BOOKED appointments on {target_appointment_time.date()}: {len(all_appointments)}")
-
-            # Покажем ВСЕ записи для отладки
-            for apt in all_appointments:
-                appointment_datetime = datetime.combine(apt.date, apt.time_start)
-                time_diff = (appointment_datetime - target_appointment_time).total_seconds() / 60
-                print(
-                    f"      - Appointment #{apt.id}: {apt.time_start} (target: {target_appointment_time.time()}, diff: {time_diff:.1f} min)")
+            logger.debug(
+                "Найдено %d записей на %s",
+                len(all_appointments), target_appointment_time.date()
+            )
 
             sent_count = 0
             for apt in all_appointments:
@@ -166,7 +170,10 @@ async def _send_reminders_async(minutes_before: int = None, hours_before: int = 
 
                 # Проверяем попадает ли в окно
                 if window_start <= appointment_datetime <= window_end:
-                    print(f"   ✅ MATCH! Appointment #{apt.id} at {apt.time_start} - SENDING NOTIFICATION")
+                    logger.info(
+                        "Отправка напоминания: appointment_id=%d, client_id=%d, время=%s",
+                        apt.id, apt.client.telegram_id, apt.time_start
+                    )
 
                     # Форматирование даты
                     months = {
@@ -192,17 +199,21 @@ async def _send_reminders_async(minutes_before: int = None, hours_before: int = 
                             chat_id=apt.client.telegram_id,
                             text=message
                         )
-                        print(f"   ✅ Reminder sent for appointment #{apt.id}")
+                        logger.info("✅ Напоминание отправлено для записи #%d", apt.id)
                         sent_count += 1
                     except Exception as e:
-                        print(f"   ❌ Error sending to #{apt.id}: {e}")
+                        logger.error(
+                            "Ошибка отправки напоминания для записи #%d: %s",
+                            apt.id, e
+                        )
 
-            print(f"   📤 Total reminders sent: {sent_count}")
+            if sent_count > 0:
+                logger.info("Отправлено напоминаний: %d", sent_count)
+            else:
+                logger.debug("Записей для напоминания не найдено")
 
     except Exception as e:
-        print(f"❌ Error in send_reminders: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error("Ошибка в send_reminders: %s", e, exc_info=True)
     finally:
         await bot.session.close()
 
@@ -217,6 +228,8 @@ def send_cancellation_notification(appointment_id: int, client_telegram_id: int)
 
 async def _send_cancellation_async(appointment_id: int, client_telegram_id: int):
     """Асинхронная отправка уведомления об отмене"""
+    logger.info("Отправка уведомления об отмене записи #%d", appointment_id)
+
     bot = Bot(
         token=settings.BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
@@ -233,11 +246,15 @@ async def _send_cancellation_async(appointment_id: int, client_telegram_id: int)
             chat_id=client_telegram_id,
             text=message
         )
-        print(f"✅ Cancellation notification sent for appointment #{appointment_id}")
+        logger.info(
+            "✅ Уведомление об отмене отправлено: appointment_id=%d, client_id=%d",
+            appointment_id, client_telegram_id
+        )
 
     except Exception as e:
-        print(f"❌ Error sending cancellation: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(
+            "Ошибка отправки уведомления об отмене для записи #%d: %s",
+            appointment_id, e, exc_info=True
+        )
     finally:
         await bot.session.close()
