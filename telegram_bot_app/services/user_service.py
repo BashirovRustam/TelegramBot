@@ -100,23 +100,23 @@ class UserService:
 
     async def get_by_telegram_id(self, telegram_id: int) -> Optional[User]:
         """Получить пользователя по Telegram ID"""
-        logger_user.debug("Поиск пользователя по telegram_id=%d", telegram_id)
+        logger.debug("Поиск пользователя по telegram_id=%d", telegram_id)
 
         try:
             user = await self.user_crud.get_by_telegram_id(telegram_id)
 
             if user:
-                logger_user.debug(
+                logger.debug(
                     "Пользователь найден: user_id=%d, telegram_id=%d",
                     user.id, telegram_id
                 )
             else:
-                logger_user.debug("Пользователь не найден: telegram_id=%d", telegram_id)
+                logger.debug("Пользователь не найден: telegram_id=%d", telegram_id)
 
             return user
 
         except Exception as e:
-            logger_user.error(
+            logger.error(
                 "Ошибка поиска пользователя telegram_id=%d: %s",
                 telegram_id, e, exc_info=True
             )
@@ -124,20 +124,20 @@ class UserService:
 
     async def get_by_id(self, user_id: int) -> Optional[User]:
         """Получить пользователя по ID"""
-        logger_user.debug("Поиск пользователя по user_id=%d", user_id)
+        logger.debug("Поиск пользователя по user_id=%d", user_id)
 
         try:
             user = await self.user_crud.get(user_id)
 
             if user:
-                logger_user.debug("Пользователь найден: user_id=%d", user_id)
+                logger.debug("Пользователь найден: user_id=%d", user_id)
             else:
-                logger_user.debug("Пользователь не найден: user_id=%d", user_id)
+                logger.debug("Пользователь не найден: user_id=%d", user_id)
 
             return user
 
         except Exception as e:
-            logger_user.error(
+            logger.error(
                 "Ошибка поиска пользователя user_id=%d: %s",
                 user_id, e, exc_info=True
             )
