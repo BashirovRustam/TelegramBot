@@ -212,32 +212,32 @@ async def init_bot():
     """Общая инициализация бота и диспетчера"""
     global bot_instance, dp
 
-    # Redis + FSM
+    # --- Redis + FSM ---
     logger.info("📡 Подключение к Redis...")
-    redis_host = getattr(settings, 'REDIS_HOST', 'localhost')
-    redis_port = getattr(settings, 'REDIS_PORT', 6379)
 
-    redis_client = redis.Redis(
-        host=redis_host,
-        port=redis_port,
-        db=0,
-        decode_responses=False
-    )
+    # Берем URL Redis из переменных окружения
+    # Если нет UPSTASH_REDIS_URL, fallback на локальный Redis (для локального теста)
+    REDIS_URL = os.environ.get("UPSTASH_REDIS_URL", "redis://localhost:6379/0")
+
+    # Подключение через from_url (поддерживает TLS для Upstash)
+    redis_client = redis.from_url(REDIS_URL, decode_responses=False)
     storage = RedisStorage(redis_client)
 
-    # Инициализация бота
+    # --- Инициализация бота ---
     bot_instance = Bot(
         token=settings.BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
     )
 
-    # Dispatcher
+    # --- Dispatcher ---
     dp = Dispatcher(storage=storage)
     dp.include_router(start_router)
     dp.include_router(booking_router)
     dp.include_router(my_appointments_router)
 
+    logger.info("✅ Бот инициализирован и Redis подключен")
     return bot_instance, dp
+
 
 
 @asynccontextmanager
