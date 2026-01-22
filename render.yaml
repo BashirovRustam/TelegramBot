@@ -1,0 +1,27 @@
+services:
+  # Web Service для бота
+  - type: web
+    name: telegram-bot
+    env: docker
+    region: oregon
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: telegram-bot-db
+          property: connectionString
+      - key: TWOGIS_API_KEY
+        sync: false
+      - key: LOG_LEVEL
+        value: INFO
+
+databases:
+  # PostgreSQL база данных
+  - name: telegram-bot-db
+    region: oregon
+    plan: free
+    databaseName: telegram_bot_db
+    user: telegram_bot_user
