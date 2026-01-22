@@ -37,3 +37,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"
+
+
+# Создаем экземпляр настроек
+settings = Settings()
