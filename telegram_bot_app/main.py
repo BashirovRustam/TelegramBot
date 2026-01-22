@@ -154,7 +154,6 @@ async def health_check():
     }
 
 
-
 if __name__ == "__main__":
     # Берем порт из переменной окружения Render, по умолчанию 8000 для локальных тестов
     port = int(os.environ.get("PORT", 8000))
