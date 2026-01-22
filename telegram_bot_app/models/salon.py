@@ -11,6 +11,7 @@ class Salon(Base):
     address: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str] = mapped_column(String(1000), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    gis_link: Mapped[str] = mapped_column(String(1000), nullable=True)
 
     # Relationships
     services: Mapped[list["Service"]] = relationship("Service", back_populates="salon")

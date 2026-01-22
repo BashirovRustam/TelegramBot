@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select, and_
@@ -6,6 +6,8 @@ from telegram_bot_app.crud.salon import SalonCRUD
 from telegram_bot_app.crud.service import ServiceCRUD
 from telegram_bot_app.crud.master import MasterCRUD
 from telegram_bot_app.models.master import Master
+from telegram_bot_app.models.salon import Salon
+from telegram_bot_app.services.gis_service import update_gis_link
 
 
 class SalonService:
@@ -45,3 +47,39 @@ class SalonService:
             List[Master]: Список активных мастеров салона
         """
         return await self.master_crud.get_active_by_salon_id_with_user(salon_id)
+    
+    async def create_salon(self, salon_data: dict) -> Salon:
+        """
+        Создает новый салон и автоматически обновляет GIS ссылку
+        
+        Args:
+            salon_data: Данные для создания салона
+            
+        Returns:
+            Salon: Созданный салон с обновленной GIS ссылкой
+        """
+        salon = await self.salon_crud.create(salon_data)
+        
+        # Обновляем GIS ссылку
+        await update_gis_link(salon, self.db)
+        
+        return salon
+    
+    async def update_salon(self, salon_id: int, salon_data: dict) -> Optional[Salon]:
+        """
+        Обновляет салон и автоматически обновляет GIS ссылку если адрес изменился
+        
+        Args:
+            salon_id: ID салона
+            salon_data: Данные для обновления
+            
+        Returns:
+            Optional[Salon]: Обновленный салон или None если не найден
+        """
+        salon = await self.salon_crud.update(salon_id, salon_data)
+        
+        if salon and 'address' in salon_data:
+            # Если адрес изменился, обновляем GIS ссылку
+            await update_gis_link(salon, self.db)
+        
+        return salon

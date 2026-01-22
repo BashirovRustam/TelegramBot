@@ -8,6 +8,7 @@ class SalonCreate(BaseModel):
     address: str = Field(..., min_length=1, max_length=500, description="Адрес салона")
     description: Optional[str] = Field(None, max_length=1000, description="Описание салона")
     is_active: bool = Field(default=True, description="Активен ли салон")
+    gis_link: Optional[str] = Field(None, max_length=1000, description="Ссылка на 2GIS")
 
 
 class SalonUpdate(BaseModel):
@@ -16,6 +17,7 @@ class SalonUpdate(BaseModel):
     address: Optional[str] = Field(None, min_length=1, max_length=500, description="Адрес салона")
     description: Optional[str] = Field(None, max_length=1000, description="Описание салона")
     is_active: Optional[bool] = Field(None, description="Активен ли салон")
+    gis_link: Optional[str] = Field(None, max_length=1000, description="Ссылка на 2GIS")
 
 
 class SalonRead(BaseModel):
@@ -25,6 +27,7 @@ class SalonRead(BaseModel):
     address: str = Field(..., description="Адрес салона")
     description: Optional[str] = Field(..., description="Описание салона")
     is_active: bool = Field(..., description="Активен ли салон")
+    gis_link: Optional[str] = Field(..., description="Ссылка на 2GIS")
 
     class Config:
         from_attributes = True

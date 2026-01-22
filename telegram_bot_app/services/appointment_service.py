@@ -3,6 +3,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from telegram_bot_app.crud.appointment import AppointmentCRUD
 from telegram_bot_app.crud.service import ServiceCRUD
+from telegram_bot_app.crud.salon import SalonCRUD
 from telegram_bot_app.models.appointment import AppointmentStatusEnum
 from telegram_bot_app.schemas.appointment import AppointmentCreate
 
@@ -12,6 +13,7 @@ class AppointmentService:
         self.db = db
         self.appointment_crud = AppointmentCRUD(db)
         self.service_crud = ServiceCRUD(db)
+        self.salon_crud = SalonCRUD(db)
 
     async def create_appointment(
             self,
@@ -38,8 +40,15 @@ class AppointmentService:
                 print("DEBUG: Service not found")
                 return None
 
+            # Получаем информацию о салоне
+            salon = await self.salon_crud.get(salon_id)
+            if not salon:
+                print("DEBUG: Salon not found")
+                return None
+
             print(
                 f"DEBUG: Service found - name={service.name}, duration={service.duration_minutes}, price={service.price}")
+            print(f"DEBUG: Salon found - name={salon.name}, address={salon.address}, gis_link={salon.gis_link}")
 
             # Конвертируем строки в datetime/time объекты
             from datetime import datetime
@@ -113,7 +122,10 @@ class AppointmentService:
                 "status": created_appointment.status,
                 "service_name": service.name,
                 "service_duration": service.duration_minutes,
-                "service_price": service.price
+                "service_price": service.price,
+                "salon_name": salon.name,
+                "salon_address": salon.address,
+                "salon_gis_link": salon.gis_link
             }
 
         except Exception as e:

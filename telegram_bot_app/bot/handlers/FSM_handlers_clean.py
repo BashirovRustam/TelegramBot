@@ -305,16 +305,23 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext):
 
         formatted_date = f"{date_obj.day} {months[date_obj.month]} ({weekdays[date_obj.weekday()]})"
 
+        # Формируем адрес со ссылкой на 2GIS если доступна
+        if result.get('salon_gis_link'):
+            address_text = f"📍 Адрес: [Посмотреть на карте]({result['salon_gis_link']})"
+        else:
+            address_text = f"📍 Адрес: {result.get('salon_address', 'Адрес не указан')}"
+
         await callback.message.edit_text(
             f"✅ **Запись успешно создана!**\n\n"
             f"📋 Номер записи: #{result['id']}\n"
-            f"🏛️ Салон: {data.get('salon_name', 'Не указан')}\n"
+            f"🏛️ Салон: {result.get('salon_name', 'Не указан')}\n"
             f"💅 Услуга: {result['service_name']}\n"
             f"👨‍💼 Мастер: {data.get('master_name', 'Не указан')}\n"
             f"📅 Дата: {formatted_date}\n"
             f"🕐 Время: {selected_time}\n"
             f"💰 Цена: {result['service_price']} тг.\n"
-            f"⏱️ Длительность: {result['service_duration']} минут\n\n"
+            f"⏱️ Длительность: {result['service_duration']} минут\n"
+            f"{address_text}\n\n"
             f"📝 Приходите за 5 минут до начала записи\n"
             f"📱 Для отмены записи используйте кнопку '📋 Мои записи'\n"
             f"🔔 Вам придет напоминание за 1 час до визита"

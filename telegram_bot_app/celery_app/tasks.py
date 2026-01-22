@@ -57,6 +57,12 @@ async def _send_confirmation_async(appointment_id: int):
             }
             formatted_date = f"{appointment.date.day} {months[appointment.date.month]}"
 
+            # Формируем адрес с ссылкой на 2GIS если доступна
+            if appointment.salon.gis_link:
+                address_text = f"📍 Адрес: [Посмотреть на карте]({appointment.salon.gis_link})"
+            else:
+                address_text = f"📍 Адрес: {appointment.salon.address}"
+
             message = (
                 f"✅ *Запись подтверждена!*\n\n"
                 f"📋 Номер записи: #{appointment.id}\n"
@@ -65,7 +71,8 @@ async def _send_confirmation_async(appointment_id: int):
                 f"👨‍💼 Мастер: {appointment.master.user.full_name}\n"
                 f"📅 Дата: {formatted_date}\n"
                 f"🕐 Время: {appointment.time_start.strftime('%H:%M')}\n"
-                f"💰 Стоимость: {appointment.service.price} тг.\n\n"
+                f"💰 Стоимость: {appointment.service.price} тг.\n"
+                f"{address_text}\n\n"
                 f"Ждем вас! За 1 час до записи придет напоминание 🔔"
             )
 
@@ -176,6 +183,12 @@ async def _send_reminders_async(minutes_before: int = None, hours_before: int = 
                     }
                     formatted_date = f"{apt.date.day} {months[apt.date.month]}"
 
+                    # Формируем адрес с ссылкой на 2GIS если доступна
+                    if apt.salon.gis_link:
+                        address_text = f"📍 Адрес: [Посмотреть на карте]({apt.salon.gis_link})"
+                    else:
+                        address_text = f"📍 Адрес: {apt.salon.address}"
+
                     message = (
                         f"{emoji} *Напоминание о записи {reminder_text}!*\n\n"
                         f"📋 Номер: #{apt.id}\n"
@@ -183,7 +196,8 @@ async def _send_reminders_async(minutes_before: int = None, hours_before: int = 
                         f"💅 Услуга: {apt.service.name}\n"
                         f"👨‍💼 Мастер: {apt.master.user.full_name}\n"
                         f"📅 Дата: {formatted_date}\n"
-                        f"🕐 Время: {apt.time_start.strftime('%H:%M')}\n\n"
+                        f"🕐 Время: {apt.time_start.strftime('%H:%M')}\n"
+                        f"{address_text}\n\n"
                         f"Ждем вас! 😊"
                     )
 
