@@ -5,6 +5,7 @@
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -153,12 +154,15 @@ async def health_check():
     }
 
 
-# Точка входа
+
 if __name__ == "__main__":
+    # Берем порт из переменной окружения Render, по умолчанию 8000 для локальных тестов
+    port = int(os.environ.get("PORT", 8000))
+
     uvicorn.run(
-        "telegram_bot_app.main:app",
+        "telegram_bot_app.main:app",  # Путь должен быть верным относительно корня проекта
         host="0.0.0.0",
-        port=8000,
+        port=port,
         log_level="info",
-        reload=False  # Отключаем reload в продакшене
+        reload=False
     )
