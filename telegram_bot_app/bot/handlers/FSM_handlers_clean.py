@@ -15,30 +15,20 @@ from telegram_bot_app.db.base import async_session
 
 router = Router()
 
-import logging
-
-logger = logging.getLogger(__name__)
 
 # ================================
 # Шаг 1. Начало записи — выбор салона
 # ================================
-
 @router.message(F.text == ReplyButtons.CREATE_BOOKING)
 async def start_booking(message: Message, state: FSMContext):
-    logger.info("Пользователь %d начал процесс бронирования", message.from_user.id)
-
     async with async_session() as db:
         salon_service = SalonService(db)
         salons = await salon_service.salon_crud.get_active()
 
     if not salons:
-        logger.warning("Нет активных салонов для бронирования")
         await message.answer("😔 Сейчас нет доступных салонов для записи.")
         return
 
-    logger.debug("Найдено салонов: %d", len(salons))
-
-    # Формируем клавиатуру выбора салона
     keyboard: list[list[InlineKeyboardButton]] = []
     row: list[InlineKeyboardButton] = []
 
@@ -49,6 +39,7 @@ async def start_booking(message: Message, state: FSMContext):
                 callback_data=f"salon:{salon.id}",
             )
         )
+
         if index % 2 == 0:
             keyboard.append(row)
             row = []
@@ -64,7 +55,6 @@ async def start_booking(message: Message, state: FSMContext):
     await state.set_state(BookingStates.waiting_for_salon)
 
 
-
 # ================================
 # Шаг 2. Обработка выбора салона
 # ================================
@@ -74,11 +64,6 @@ async def start_booking(message: Message, state: FSMContext):
 )
 async def salon_selected(callback: CallbackQuery, state: FSMContext):
     salon_id = int(callback.data.split(":")[1])
-
-    logger.info(
-        "Пользователь %d выбрал салон: salon_id=%d",
-        callback.from_user.id, salon_id
-    )
 
     async with async_session() as db:
         salon_service = SalonService(db)
@@ -254,21 +239,26 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext):
 
 
 async def create_appointment_record(callback: CallbackQuery, state: FSMContext):
+    """Создание записи в БД"""
     data = await state.get_data()
-    telegram_id = callback.from_user.id
+
+    print(f"DEBUG FSM: State data = {data}")
+
     salon_id = data.get("salon_id")
     service_id = data.get("service_id")
     master_id = data.get("master_id")
     selected_date = data.get("selected_date")
     selected_time = data.get("selected_time")
 
-    logger.info(
-        "Создание записи: user_id=%d, salon_id=%s, service_id=%s, master_id=%s, date=%s, time=%s",
-        telegram_id, salon_id, service_id, master_id, selected_date, selected_time
-    )
+    print(
+        f"DEBUG FSM: Extracted data - salon_id={salon_id}, service_id={service_id}, master_id={master_id}, date={selected_date}, time={selected_time}")
+
+    telegram_id = callback.from_user.id
+    client_name = callback.from_user.full_name or f"User_{telegram_id}"
+
+    print(f"DEBUG FSM: Telegram ID = {telegram_id}")
 
     if not all([salon_id, service_id, master_id, selected_date, selected_time]):
-        logger.error("Недостаточно данных для создания записи: user=%d, data=%s", telegram_id, data)
         await callback.message.edit_text(
             "❌ Ошибка: не все данные для записи доступны. Попробуйте начать заново."
         )
@@ -276,15 +266,19 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext):
         return
 
     async with async_session() as db:
+        # Создаем/получаем пользователя
         user_service = UserService(db)
         user = await user_service.get_or_create_user(
             telegram_id=telegram_id,
-            full_name=callback.from_user.full_name or f"User_{telegram_id}"
+            full_name=client_name
         )
 
+        print(f"DEBUG FSM: User created/found - id={user.id}, telegram_id={user.telegram_id}")
+
+        # Создаем запись используя user.id (а не telegram_id)
         appointment_service = AppointmentService(db)
         result = await appointment_service.create_appointment(
-            client_id=user.id,
+            client_id=user.id,  # ВАЖНО: используем user.id
             salon_id=salon_id,
             master_id=master_id,
             service_id=service_id,
@@ -292,21 +286,47 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext):
             appointment_time=selected_time
         )
 
+        # Коммитим все изменения
         await db.commit()
 
     if result:
-        logger.info("✅ Запись создана успешно: appointment_id=%d, user_id=%d", result['id'], user.id)
+        # 🔔 ОТПРАВЛЯЕМ ЗАДАЧУ В CELERY
         from telegram_bot_app.celery_app.tasks import send_appointment_confirmation
         send_appointment_confirmation.delay(result['id'])
-        await callback.message.edit_text("✅ Запись успешно создана!")
-    else:
-        logger.warning("Не удалось создать запись для user_id=%d (возможен конфликт времени)", user.id)
+
+        from datetime import datetime
+        date_obj = datetime.strptime(selected_date, "%Y-%m-%d").date()
+        months = {
+            1: 'января', 2: 'февраля', 3: 'марта', 4: 'апреля',
+            5: 'мая', 6: 'июня', 7: 'июля', 8: 'августа',
+            9: 'сентября', 10: 'октября', 11: 'ноября', 12: 'декабря'
+        }
+        weekdays = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс']
+
+        formatted_date = f"{date_obj.day} {months[date_obj.month]} ({weekdays[date_obj.weekday()]})"
+
         await callback.message.edit_text(
-            "❌ Не удалось создать запись. Возможно, выбранное время уже занято."
+            f"✅ **Запись успешно создана!**\n\n"
+            f"📋 Номер записи: #{result['id']}\n"
+            f"🏛️ Салон: {data.get('salon_name', 'Не указан')}\n"
+            f"💅 Услуга: {result['service_name']}\n"
+            f"👨‍💼 Мастер: {data.get('master_name', 'Не указан')}\n"
+            f"📅 Дата: {formatted_date}\n"
+            f"🕐 Время: {selected_time}\n"
+            f"💰 Цена: {result['service_price']} тг.\n"
+            f"⏱️ Длительность: {result['service_duration']} минут\n\n"
+            f"📝 Приходите за 5 минут до начала записи\n"
+            f"📱 Для отмены записи используйте кнопку '📋 Мои записи'\n"
+            f"🔔 Вам придет напоминание за 1 час до визита"
+        )
+    else:
+        await callback.message.edit_text(
+            "❌ **Ошибка создания записи**\n\n"
+            "К сожалению, не удалось создать запись. Возможно, выбранное время уже занято.\n\n"
+            "Попробуйте выбрать другое время или начать заново."
         )
 
     await state.clear()
-
 
 
 async def show_confirmation_keyboard(message: Message, state: FSMContext):
