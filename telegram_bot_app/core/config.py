@@ -38,6 +38,13 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
         extra = "ignore"
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if self.DATABASE_URL.startswith("postgresql://"):
+            self.DATABASE_URL = self.DATABASE_URL.replace(
+                "postgresql://",
+                "postgresql+asyncpg://",
+                1
+            )
 
-# Создаем экземпляр настроек
 settings = Settings()
