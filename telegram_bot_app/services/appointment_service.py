@@ -1,14 +1,10 @@
 from datetime import datetime, time
 from typing import Optional
-import logging  # НОВОЕ
 from sqlalchemy.ext.asyncio import AsyncSession
 from telegram_bot_app.crud.appointment import AppointmentCRUD
 from telegram_bot_app.crud.service import ServiceCRUD
 from telegram_bot_app.models.appointment import AppointmentStatusEnum
 from telegram_bot_app.schemas.appointment import AppointmentCreate
-
-# Создаем логгер для этого модуля
-logger = logging.getLogger(__name__)
 
 
 class AppointmentService:
@@ -19,7 +15,7 @@ class AppointmentService:
 
     async def create_appointment(
             self,
-            client_id: int,
+            client_id: int,  # Теперь это users.id, а не telegram_id
             salon_id: int,
             master_id: int,
             service_id: int,
@@ -27,38 +23,30 @@ class AppointmentService:
             appointment_time: str
     ) -> Optional[dict]:
         """Создать новую запись на услугу."""
-
-        # ============================================
-        # 🟢 INFO - начало операции
-        # ============================================
-        logger.info(
-            "Создание записи: client_id=%d, salon_id=%d, master_id=%d, service_id=%d, date=%s, time=%s",
-            client_id, salon_id, master_id, service_id, appointment_date, appointment_time
-        )
-
         try:
-            # Проверка времени
+            print(
+                f"DEBUG: Creating appointment - client_id={client_id}, salon_id={salon_id}, master_id={master_id}, service_id={service_id}, date={appointment_date}, time={appointment_time}")
+
+            # ПРОВЕРКА: время должно быть передано
             if not appointment_time:
-                # ⚠️ WARNING - странная ситуация, но не критично
-                logger.warning("Время записи не указано для клиента %d", client_id)
+                print("ERROR: appointment_time is None or empty!")
                 return None
 
-            # Получаем услугу
+            # Получаем информацию об услуге
             service = await self.service_crud.get(service_id)
             if not service:
-                # ⚠️ WARNING - услуга не найдена
-                logger.warning("Услуга service_id=%d не найдена", service_id)
+                print("DEBUG: Service not found")
                 return None
 
-            logger.debug(
-                "Услуга найдена: name=%s, duration=%d мин, price=%d тг",
-                service.name, service.duration_minutes, service.price
-            )
+            print(
+                f"DEBUG: Service found - name={service.name}, duration={service.duration_minutes}, price={service.price}")
 
-            # Парсим дату и время
+            # Конвертируем строки в datetime/time объекты
             from datetime import datetime
             date_obj = datetime.strptime(appointment_date, "%Y-%m-%d").date()
 
+            # Парсим время начала
+            print(f"DEBUG: Parsing time: {appointment_time}")
             if ":" in appointment_time:
                 hour, minute = map(int, appointment_time.split(":"))
             else:
@@ -73,16 +61,12 @@ class AppointmentService:
             end_minute = total_minutes % 60
 
             if end_hour >= 24:
-                # ⚠️ WARNING - время выходит за рамки дня
-                logger.warning(
-                    "Время окончания записи выходит за 24:00 для клиента %d (начало: %s, длительность: %d мин)",
-                    client_id, time_start, service.duration_minutes
-                )
+                print("DEBUG: End time exceeds 24 hours")
                 return None
 
             time_end = time(hour=end_hour, minute=end_minute)
 
-            logger.debug("Временной слот: %s - %s", time_start, time_end)
+            print(f"DEBUG: Time range - start={time_start}, end={time_end}")
 
             # Проверяем конфликт времени
             has_conflict = await self.appointment_crud.check_time_conflict(
@@ -92,12 +76,10 @@ class AppointmentService:
                 time_end=time_end
             )
 
+            print(f"DEBUG: Time conflict check result={has_conflict}")
+
             if has_conflict:
-                # ⚠️ WARNING - время занято
-                logger.warning(
-                    "Конфликт времени: master_id=%d, date=%s, time=%s-%s",
-                    master_id, date_obj, time_start, time_end
-                )
+                print("DEBUG: Conflict detected, returning None")
                 return None
 
             # Создаем запись
@@ -112,17 +94,13 @@ class AppointmentService:
                 status=AppointmentStatusEnum.BOOKED
             )
 
+            print(f"DEBUG: Creating appointment with data={appointment_data}")
+
             created_appointment = await self.appointment_crud.create(appointment_data)
 
-            # ============================================
-            # 🟢 INFO - успешное создание
-            # ============================================
-            logger.info(
-                "✅ Запись #%d успешно создана: client_id=%d, service=%s, date=%s %s",
-                created_appointment.id, client_id, service.name, date_obj, time_start
-            )
+            print(f"DEBUG: Appointment created successfully - id={created_appointment.id}")
 
-            # Возвращаем информацию
+            # Возвращаем информацию о созданной записи
             return {
                 "id": created_appointment.id,
                 "client_id": created_appointment.client_id,
@@ -139,50 +117,41 @@ class AppointmentService:
             }
 
         except Exception as e:
-            # ============================================
-            # 🔴 ERROR - ошибка при создании
-            # ============================================
-            logger.error(
-                "Ошибка создания записи для client_id=%d: %s",
-                client_id, e, exc_info=True  # exc_info=True добавит полный traceback
-            )
+            print(f"ERROR: Error creating appointment: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
+    async def get_client_appointments(self, client_id: int) -> list:
+        """
+        Получить все записи клиента.
+        
+        Args:
+            client_id: ID клиента
+            
+        Returns:
+            list: Список записей клиента
+        """
+        return await self.appointment_crud.get_by_client_id(client_id)
+
     async def cancel_appointment(self, appointment_id: int, client_id: int) -> bool:
-        """Отменить запись."""
-
-        logger.info("Отмена записи #%d клиентом %d", appointment_id, client_id)
-
-        try:
-            appointment = await self.appointment_crud.get(appointment_id)
-
-            if not appointment or appointment.client_id != client_id:
-                logger.warning(
-                    "Запись #%d не найдена или не принадлежит клиенту %d",
-                    appointment_id, client_id
-                )
-                return False
-
-            if appointment.status != AppointmentStatusEnum.BOOKED:
-                logger.warning(
-                    "Запись #%d уже отменена или завершена (status=%s)",
-                    appointment_id, appointment.status
-                )
-                return False
-
-            await self.appointment_crud.cancel(appointment_id)
-
-            logger.info("✅ Запись #%d успешно отменена", appointment_id)
-
-            # Отправляем уведомление через Celery
-            from telegram_bot_app.celery_app.tasks import send_cancellation_notification
-            send_cancellation_notification.delay(appointment_id, appointment.client.telegram_id)
-
-            return True
-
-        except Exception as e:
-            logger.error(
-                "Ошибка отмены записи #%d: %s",
-                appointment_id, e, exc_info=True
-            )
+        """
+        Отменить запись (только если она принадлежит клиенту).
+        
+        Args:
+            appointment_id: ID записи
+            client_id: ID клиента
+            
+        Returns:
+            bool: True если запись отменена
+        """
+        appointment = await self.appointment_crud.get(appointment_id)
+        
+        if not appointment or appointment.client_id != client_id:
             return False
+        
+        if appointment.status != AppointmentStatusEnum.BOOKED:
+            return False  # Нельзя отменить уже завершенную или отмененную запись
+        
+        await self.appointment_crud.cancel(appointment_id)
+        return True

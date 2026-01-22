@@ -1,6 +1,12 @@
 # Настройки проекта и переменные окружения
 
+import os
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
+from typing import Optional
+
+# Явно загружаем .env файл
+load_dotenv()
 
 class Settings(BaseSettings):
     # 🔹 Строка подключения к БД
@@ -23,6 +29,13 @@ class Settings(BaseSettings):
     # 🔹 Токен Telegram бота
     BOT_TOKEN: str
 
+    # 🔹 API ключ 2GIS
+    TWOGIS_API_KEY: Optional[str] = None
+    # Для совместимости с .env файлом где ключ назван в нижнем регистре
+    @property
+    def twogis_api_key(self):
+        return self.TWOGIS_API_KEY or os.getenv('2gis_api_key')
+
     # 🔹 Настройки FastAPI
     DEBUG: bool = True
     APP_NAME: str = "Task Dispatcher Bot"
@@ -30,6 +43,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"  # читаем переменные окружения из .env
         env_file_encoding = "utf-8"
+        extra = "ignore"  # игнорировать лишние переменные окружения
 
 # Создаём объект настроек, который будем импортировать в проект
 settings = Settings()
