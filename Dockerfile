@@ -1,26 +1,28 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Устанавливаем системные зависимости
+# Установка зависимостей системы
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Копируем зависимости
+# Копирование requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем код
+# Копирование приложения
 COPY . .
 
-# Создаем пользователя
-RUN useradd -m -u 1000 botuser && chown -R botuser:botuser /app
-USER botuser
+# Создание entrypoint скрипта
+RUN echo '#!/bin/sh\n\
+set -e\n\
+echo "Running database migrations..."\n\
+alembic upgrade head\n\
+echo "Starting Telegram bot..."\n\
+exec python -m telegram_bot_app.main' > /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
 
-# Expose порт для FastAPI
-EXPOSE 8000
-
-# Запуск FastAPI + Bot
-CMD ["python", "-m", "uvicorn", "telegram_bot_app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Запуск через entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]

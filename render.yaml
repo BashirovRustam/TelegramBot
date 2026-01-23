@@ -6,9 +6,6 @@ services:
     region: oregon
     plan: free
     dockerfilePath: ./Dockerfile
-    # Команда запуска с миграциями (безопасно при каждом деплое)
-    dockerCommand: >
-      sh -c "alembic upgrade head && python -m telegram_bot_app.main"
     envVars:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
