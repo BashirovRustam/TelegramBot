@@ -1,8 +1,9 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, join
 from sqlalchemy.orm import selectinload
 from telegram_bot_app.models.master import Master
+from telegram_bot_app.models.master_service import MasterService
 from telegram_bot_app.schemas.master import MasterCreate, MasterUpdate
 
 
@@ -131,6 +132,40 @@ class MasterCRUD:
             .where(Master.id == master_id)
         )
         return result.scalar_one_or_none()
+
+    async def get_active_by_service_id(self, service_id: int, salon_id: int) -> List[Master]:
+        """Получить активных мастеров для конкретной услуги в салоне"""
+        result = await self.db.execute(
+            select(Master)
+            .join(MasterService, Master.id == MasterService.master_id)
+            .where(
+                and_(
+                    MasterService.service_id == service_id,
+                    Master.salon_id == salon_id,
+                    Master.is_active == True
+                )
+            )
+            .order_by(Master.id)
+            .options(selectinload(Master.user))
+        )
+        return result.scalars().all()
+
+    async def get_active_by_service_id_relationship(self, service_id: int, salon_id: int) -> List[Master]:
+        """Получить активных мастеров для услуги через relationship (альтернативный вариант)"""
+        result = await self.db.execute(
+            select(Master)
+            .join(Master.master_services)
+            .where(
+                and_(
+                    MasterService.service_id == service_id,
+                    Master.salon_id == salon_id,
+                    Master.is_active == True
+                )
+            )
+            .order_by(Master.id)
+            .options(selectinload(Master.user))
+        )
+        return result.scalars().all()
 
 
 # Dependency function

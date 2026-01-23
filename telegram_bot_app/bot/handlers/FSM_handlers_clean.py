@@ -33,9 +33,14 @@ async def start_booking(message: Message, state: FSMContext):
     row: list[InlineKeyboardButton] = []
 
     for index, salon in enumerate(salons, start=1):
+        # Ограничиваем длину названия салона для кнопки
+        salon_name = salon.name
+        if len(salon_name) > 30:
+            salon_name = salon_name[:27] + "..."
+        
         row.append(
             InlineKeyboardButton(
-                text=f"🏛️ {salon.name}",
+                text=f"🏛️ {salon_name}",
                 callback_data=f"salon:{salon.id}",
             )
         )
@@ -582,17 +587,18 @@ async def master_selected(callback: CallbackQuery, state: FSMContext):
 async def show_masters(message: Message, state: FSMContext):
     data = await state.get_data()
     salon_id = data.get("salon_id")
+    service_id = data.get("service_id")
 
-    if not salon_id:
-        await message.answer("❌ Сначала выберите салон")
+    if not salon_id or not service_id:
+        await message.answer("❌ Сначала выберите салон и услугу")
         return
 
     async with async_session() as db:
         salon_service = SalonService(db)
-        masters = await salon_service.get_master_by_salon(salon_id)
+        masters = await salon_service.get_masters_by_service(salon_id, service_id)
 
         if not masters:
-            await message.answer("😔 К сожалению, в этом салоне нет доступных мастеров.")
+            await message.answer("😔 К сожалению, для этой услуги пока нет доступных мастеров в салоне.")
             return
 
         keyboard = []
@@ -641,9 +647,14 @@ async def back_handler(callback: CallbackQuery, state: FSMContext):
         row: list[InlineKeyboardButton] = []
 
         for index, salon in enumerate(salons, start=1):
+            # Ограничиваем длину названия салона для кнопки
+            salon_name = salon.name
+            if len(salon_name) > 30:
+                salon_name = salon_name[:27] + "..."
+            
             row.append(
                 InlineKeyboardButton(
-                    text=f"🏛️ {salon.name}",
+                    text=f"🏛️ {salon_name}",
                     callback_data=f"salon:{salon.id}",
                 )
             )
@@ -665,8 +676,9 @@ async def back_handler(callback: CallbackQuery, state: FSMContext):
 
         data = await state.get_data()
         salon_id = data.get("salon_id")
+        service_id = data.get("service_id")
 
-        if salon_id:
+        if salon_id and service_id:
             await show_masters(callback.message, state)
 
     elif action == "to_date":
