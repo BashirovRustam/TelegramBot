@@ -45,3 +45,16 @@ class SalonService:
             List[Master]: Список активных мастеров салона
         """
         return await self.master_crud.get_active_by_salon_id_with_user(salon_id)
+
+    async def get_masters_by_service(self, salon_id: int, service_id: int) -> List[Master]:
+        """
+        Возвращает список активных мастеров салона, которые предоставляют конкретную услугу.
+        
+        Args:
+            salon_id: ID салона
+            service_id: ID услуги
+            
+        Returns:
+            List[Master]: Список активных мастеров салона для услуги
+        """
+        return await self.master_crud.get_active_by_service_id(service_id, salon_id)
