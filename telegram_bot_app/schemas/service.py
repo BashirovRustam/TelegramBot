@@ -7,7 +7,7 @@ class ServiceCreate(BaseModel):
     salon_id: int = Field(..., description="Идентификатор салона")
     name: str = Field(..., min_length=1, max_length=255, description="Название услуги")
     duration_minutes: int = Field(..., gt=0, description="Длительность услуги в минутах")
-    price: float = Field(..., ge=0, description="Стоимость услуги")
+    price: int = Field(..., ge=0, description="Стоимость услуги")
     is_active: bool = Field(default=True, description="Активна ли услуга")
 
 
