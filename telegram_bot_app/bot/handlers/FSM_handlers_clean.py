@@ -309,7 +309,7 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext):
             f"✅ **Запись успешно создана!**\n\n"
             f"📋 Номер записи: #{result['id']}\n"
             f"🏛️ Салон: {data.get('salon_name', 'Не указан')}\n"
-            f"💅 Услуга: {result['service_name']}\n"
+            f"✨ Услуга: {result['service_name']}\n"
             f"👨‍💼 Мастер: {data.get('master_name', 'Не указан')}\n"
             f"📅 Дата: {formatted_date}\n"
             f"🕐 Время: {selected_time}\n"
@@ -356,7 +356,7 @@ async def show_confirmation_keyboard(message: Message, state: FSMContext):
 
     keyboard = [
         [
-            InlineKeyboardButton(text="✅ Подтвердить запись", callback_data="confirm_booking:confirm"),
+            InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm_booking:confirm"),
             InlineKeyboardButton(text="❌ Отменить", callback_data="confirm_booking:cancel")
         ]
     ]
@@ -364,7 +364,7 @@ async def show_confirmation_keyboard(message: Message, state: FSMContext):
     await message.edit_text(
         f"📋 **Подтвердите запись:**\n\n"
         f"🏛️ Салон: {salon_name}\n"
-        f"💅 Услуга: {service_name}\n"
+        f"✨ Услуга: {service_name}\n"
         f"👨‍💼 Мастер: {master_name}\n"
         f"📅 Дата: {formatted_date}\n"
         f"🕐 Время: {selected_time}\n"
@@ -526,27 +526,19 @@ async def show_services_for_salon(message: Message, state: FSMContext, salon_id:
             return
 
         keyboard = []
-        row = []
 
-        for i, service in enumerate(services, start=1):
-            row.append(
+        for service in services:
+            keyboard.append([
                 InlineKeyboardButton(
-                    text=f"💅 {service.name} ({service.duration_minutes}мин) - {service.price} тг.",
+                    text=f"✨ {service.name} ({service.duration_minutes}мин) - {service.price} тг.",
                     callback_data=f"service:{service.id}"
                 )
-            )
-
-            if i % 2 == 0:
-                keyboard.append(row)
-                row = []
-
-        if row:
-            keyboard.append(row)
+            ])
 
         keyboard.append([InlineKeyboardButton(text="🔙 Назад", callback_data="back:to_salon")])
 
         await message.answer(
-            "💅 **Выберите услугу:**",
+            "✨ **Выберите услугу:**",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard),
         )
 

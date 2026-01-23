@@ -5,7 +5,7 @@ main_menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text=ReplyButtons.CREATE_BOOKING)],
         [KeyboardButton(text=ReplyButtons.MY_BOOKINGS)],
-        [KeyboardButton(text=ReplyButtons.ABOUT_BOT)],
+        [KeyboardButton(text=ReplyButtons.AUTHOR)],
     ],
     resize_keyboard=True,
     one_time_keyboard=False,
