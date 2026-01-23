@@ -10,7 +10,7 @@ class Service(Base):
     salon_id: Mapped[int] = mapped_column(Integer, ForeignKey("salons.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
-    price: Mapped[float] = mapped_column(Float, nullable=False)
+    price: Mapped[int] = mapped_column(Integer, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationships
