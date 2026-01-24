@@ -42,10 +42,10 @@ async def my_appointments_handler(message: Message):
 
         logger.info("Найдено активных записей: %d для user_id=%d", len(appointments), user.id)
 
-        # Формируем текст со всеми записями
-        text = "📋 *Мои записи*\n\n"
-        keyboard_buttons = []
+        # Отправляем заголовок
+        await message.answer("📋 *Мои записи*\n\n", parse_mode="Markdown")
 
+        # Отправляем каждую запись отдельным сообщением с кнопкой
         for apt in appointments:
             apt_with_rel = await appointment_service.appointment_crud.get_with_relations(apt.id)
             if not apt_with_rel:
@@ -61,25 +61,24 @@ async def my_appointments_handler(message: Message):
             status_emoji = "✅" if apt.status.value == "BOOKED" else "❌"
             master_name = master.user.full_name if master and master.user else "Не указан"
 
-            text += (
+            text = (
                 f"{status_emoji} *Запись #{apt.id}*\n"
                 f"📅 {date_str} с {time_start_str} до {time_end_str}\n"
                 f"💇 Услуга: {service.name if service else 'Не указана'}\n"
                 f"👨‍💼 Мастер: {master_name}\n"
                 f"🏛️ Салон: {salon.name if salon else 'Не указан'}\n"
-                f"💰 Цена: {service.price if service else 'Не указана'} тг\n"
-                + "-" * 30 + "\n"
+                f"💰 Цена: {service.price if service else 'Не указана'} тг"
             )
 
-            keyboard_buttons.append([
+            # Создаем клавиатуру только для этой записи
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[[
                 InlineKeyboardButton(
                     text=f"❌ Отменить запись #{apt.id}",
                     callback_data=f"cancel_appointment:{apt.id}"
                 )
-            ])
+            ]])
 
-        reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons) if keyboard_buttons else None
-        await message.answer(text, reply_markup=reply_markup, parse_mode="Markdown")
+            await message.answer(text, reply_markup=keyboard, parse_mode="Markdown")
 
 
 # =========================

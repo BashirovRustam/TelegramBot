@@ -379,7 +379,7 @@ async def show_confirmation_keyboard(message: Message, state: FSMContext):
     )
 
 
-@router.message(BookingStates.waiting_for_time)
+@router.message(BookingStates.waiting_for_time, F.text != ReplyButtons.MY_BOOKINGS)
 async def show_available_times_handler(message: Message, state: FSMContext):
     await show_available_times(message, state)
 
@@ -448,7 +448,7 @@ async def show_available_times(message: Message, state: FSMContext):
     )
 
 
-@router.message(BookingStates.waiting_for_date)
+@router.message(BookingStates.waiting_for_date, F.text != ReplyButtons.MY_BOOKINGS)
 async def show_available_dates_handler(message: Message, state: FSMContext):
     await show_available_dates(message, state)
 
@@ -583,7 +583,7 @@ async def master_selected(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-@router.message(BookingStates.waiting_for_master)
+@router.message(BookingStates.waiting_for_master, F.text != ReplyButtons.MY_BOOKINGS)
 async def show_masters(message: Message, state: FSMContext):
     data = await state.get_data()
     salon_id = data.get("salon_id")
