@@ -1,12 +1,14 @@
 from celery import Celery
 from celery.schedules import crontab
 from telegram_bot_app.core.config import settings
+import os
 
 # Создаем экземпляр Celery
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/1")
 celery_app = Celery(
     "beauty_salon_bot",
-    broker=f"redis://localhost:6379/1",  # используем DB 1 для Celery
-    backend=f"redis://localhost:6379/1",
+    broker=REDIS_URL,
+    backend=REDIS_URL,
     include=["telegram_bot_app.celery_app.tasks"]
 )
 

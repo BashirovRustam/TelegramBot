@@ -41,8 +41,3 @@ htmlcov/
 # OS files
 .DS_Store
 Thumbs.db
-
-.env
-README.md
-
-celerybeat-schedule.db

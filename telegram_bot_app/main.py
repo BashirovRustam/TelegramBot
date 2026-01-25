@@ -52,8 +52,8 @@ async def init_bot():
     logger.info("📡 Подключение к Redis...")
 
     # Берем URL Redis из переменных окружения
-    # Если нет UPSTASH_REDIS_URL, fallback на локальный Redis (для локального теста)
-    REDIS_URL = os.environ.get("UPSTASH_REDIS_URL", "redis://localhost:6379/0")
+    # Если нет REDIS_URL, fallback на локальный Redis (для локального теста)
+    REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
     # Подключение через from_url (поддерживает TLS для Upstash)
     redis_client = redis.from_url(REDIS_URL, decode_responses=False)
