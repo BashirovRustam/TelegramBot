@@ -15,14 +15,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копирование приложения
 COPY . .
 
-# Создание entrypoint скрипта
-RUN echo '#!/bin/sh\n\
-set -e\n\
-echo "Running database migrations..."\n\
-alembic upgrade head\n\
-echo "Starting Telegram bot..."\n\
-exec python -m telegram_bot_app.main' > /app/entrypoint.sh && \
-    chmod +x /app/entrypoint.sh
+# Копирование и настройка entrypoint скрипта
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # Запуск через entrypoint
 ENTRYPOINT ["/app/entrypoint.sh"]

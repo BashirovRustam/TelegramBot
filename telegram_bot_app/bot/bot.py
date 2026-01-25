@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -31,7 +32,12 @@ async def main():
         # 2️⃣ REDIS + FSM
         # =========================
         logger.info("📡 Подключение к Redis...")
-        redis_client = redis.Redis(host="localhost", port=6379, db=0)
+        
+        # Берем URL Redis из переменных окружения
+        REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+        
+        # Подключение через from_url
+        redis_client = redis.from_url(REDIS_URL, decode_responses=False)
         storage = RedisStorage(redis_client)
         logger.info("✅ Redis подключен")
 
