@@ -40,8 +40,9 @@ class UserService:
 
             # Дополнительная проверка через прямой SQL запрос
             logger.info("🔄 Дополнительная проверка через SQL...")
+            from sqlalchemy import text
             result = await self.db.execute(
-                "SELECT id, telegram_id, full_name FROM users WHERE telegram_id = :telegram_id",
+                text("SELECT id, telegram_id, full_name FROM users WHERE telegram_id = :telegram_id"),
                 {"telegram_id": telegram_id}
             )
             sql_user = result.fetchone()

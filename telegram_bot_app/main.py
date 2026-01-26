@@ -108,16 +108,13 @@ async def lifespan(app: FastAPI):
             webhook_info = await bot_instance.get_webhook_info()
             logger.info(f"📋 Текущий webhook: {webhook_info.url}")
             
-            # Устанавливаем webhook только если он не установлен или неверный
-            if not webhook_info.url or webhook_info.url != WEBHOOK_URL:
-                logger.info(f"🔄 Установка нового webhook: {WEBHOOK_URL}")
-                await bot_instance.set_webhook(
-                    url=WEBHOOK_URL,
-                    drop_pending_updates=True
-                )
-                logger.info("✅ Webhook установлен")
-            else:
-                logger.info("✅ Webhook уже настроен корректно")
+            # ВСЕГДА устанавливаем webhook для надежности
+            logger.info(f"🔄 Установка webhook: {WEBHOOK_URL}")
+            await bot_instance.set_webhook(
+                url=WEBHOOK_URL,
+                drop_pending_updates=True
+            )
+            logger.info("✅ Webhook установлен принудительно")
                 
             logger.info(f"🌐 Бот запущен в режиме WEBHOOK. URL: {WEBHOOK_URL}")
         except Exception as e:
@@ -146,8 +143,9 @@ async def lifespan(app: FastAPI):
             pass
 
     if bot_instance:
-        if RENDER_EXTERNAL_URL:
-            await bot_instance.delete_webhook()
+        # НЕ удаляем webhook при shutdown - это сбрасывает его в Telegram
+        # if RENDER_EXTERNAL_URL:
+        #     await bot_instance.delete_webhook()
         await bot_instance.session.close()
     logger.info("✅ Приложение остановлено")
 
