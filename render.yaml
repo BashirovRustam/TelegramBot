@@ -6,6 +6,7 @@ services:
     region: oregon
     plan: free
     dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
     envVars:
       - key: TELEGRAM_BOT_TOKEN
         sync: false   # Токен от BotFather, проверяй, чтобы не было пробелов
