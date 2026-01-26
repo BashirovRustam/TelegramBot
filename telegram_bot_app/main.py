@@ -93,24 +93,46 @@ async def lifespan(app: FastAPI):
     global bot_instance, dp, bot_task
 
     logger.info("🚀 Запуск приложения...")
-    await init_bot()
+    
+    try:
+        await init_bot()
+        logger.info("✅ Инициализация бота завершена")
+    except Exception as e:
+        logger.error(f"❌ Ошибка при инициализации бота: {e}")
+        raise
 
     if RENDER_EXTERNAL_URL:
         # --- РЕЖИМ WEBHOOK (для Render) ---
-        webhook_info = await bot_instance.get_webhook_info()
-        if webhook_info.url != WEBHOOK_URL:
-            await bot_instance.set_webhook(
-                url=WEBHOOK_URL,
-                drop_pending_updates=True
-            )
-        logger.info(f"🌐 Бот запущен в режиме WEBHOOK. URL: {WEBHOOK_URL}")
+        try:
+            logger.info("🔧 Настройка webhook...")
+            webhook_info = await bot_instance.get_webhook_info()
+            logger.info(f"📋 Текущий webhook: {webhook_info.url}")
+            
+            if webhook_info.url != WEBHOOK_URL:
+                logger.info(f"🔄 Установка нового webhook: {WEBHOOK_URL}")
+                await bot_instance.set_webhook(
+                    url=WEBHOOK_URL,
+                    drop_pending_updates=True
+                )
+                logger.info("✅ Webhook установлен")
+            else:
+                logger.info("✅ Webhook уже настроен")
+                
+            logger.info(f"🌐 Бот запущен в режиме WEBHOOK. URL: {WEBHOOK_URL}")
+        except Exception as e:
+            logger.error(f"❌ Ошибка при настройке webhook: {e}")
+            raise
     else:
         # --- РЕЖИМ POLLING (Локально) ---
         await bot_instance.delete_webhook(drop_pending_updates=True)
         bot_task = asyncio.create_task(dp.start_polling(bot_instance))
         logger.info("💻 Бот запущен в режиме POLLING (локально)")
 
-    yield
+    try:
+        yield
+    except Exception as e:
+        logger.error(f"❌ Ошибка во время работы приложения: {e}")
+        raise
 
     # --- SHUTDOWN ---
     logger.info("🛑 Остановка приложения...")
