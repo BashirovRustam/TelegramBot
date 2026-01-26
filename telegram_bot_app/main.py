@@ -172,6 +172,20 @@ async def bot_webhook(request: Request):
         update_data = await request.json()
         logger.info(f"📋 Данные обновления: {update_data.get('update_id', 'unknown')}")
         
+        # Детальное логирование типа обновления
+        if 'message' in update_data:
+            message = update_data['message']
+            user_id = message.get('from', {}).get('id', 'unknown')
+            text = message.get('text', 'no text')
+            logger.info(f"💬 Сообщение от пользователя {user_id}: '{text}'")
+        elif 'callback_query' in update_data:
+            callback = update_data['callback_query']
+            user_id = callback.get('from', {}).get('id', 'unknown')
+            data = callback.get('data', 'no data')
+            logger.info(f"🔘 Callback от пользователя {user_id}: '{data}'")
+        else:
+            logger.info(f"📦 Тип обновления: {list(update_data.keys())}")
+        
         update = types.Update.model_validate(update_data, context={"bot": bot_instance})
         await dp.feed_update(bot_instance, update)
         
