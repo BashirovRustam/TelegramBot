@@ -13,8 +13,15 @@ print(f"🔍 Celery - REDIS_URL: {'✅ установлен' if redis_url else '
 
 REDIS_URL = upstash_redis_url or redis_url or "redis://localhost:6379/1"
 
-# Для Upstash Redis просто используем rediss:// URL без дополнительных параметров
-# redis-py автоматически обработает SSL для rediss://
+# Для Upstash Redis настраиваем SSL для Celery
+ssl_options = None
+if REDIS_URL.startswith("rediss://"):
+    import ssl
+    ssl_options = {
+        'ssl_cert_reqs': ssl.CERT_NONE,
+        'ssl_check_hostname': False,
+        'ssl_verify_mode': ssl.CERT_NONE
+    }
 
 # Скрываем пароль в логах для безопасности
 safe_redis_url = REDIS_URL.split('@')[-1] if '@' in REDIS_URL else REDIS_URL
@@ -23,6 +30,8 @@ celery_app = Celery(
     "beauty_salon_bot",
     broker=REDIS_URL,
     backend=REDIS_URL,
+    broker_use_ssl=ssl_options,
+    redis_backend_use_ssl=ssl_options,
     include=["telegram_bot_app.celery_app.tasks"]
 )
 

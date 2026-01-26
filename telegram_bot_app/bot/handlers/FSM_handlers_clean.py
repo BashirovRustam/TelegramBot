@@ -295,9 +295,9 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext):
         await db.commit()
 
     if result:
-        # 🔔 ОТПРАВЛЯЕМ ЗАДАЧУ В CELERY
-        from telegram_bot_app.celery_app.tasks import send_appointment_confirmation
-        send_appointment_confirmation.delay(result['id'])
+        # 🔔 ОТПРАВЛЯЕМ ПОДТВЕРЖДЕНИЕ НАПРЯМУЮ (без Celery)
+        from telegram_bot_app.celery_app.tasks import _send_confirmation_async
+        await _send_confirmation_async(result['id'])
 
         from datetime import datetime
         date_obj = datetime.strptime(selected_date, "%Y-%m-%d").date()
