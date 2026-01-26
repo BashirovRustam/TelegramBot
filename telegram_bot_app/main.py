@@ -92,7 +92,7 @@ async def init_bot():
     
     # Для Upstash Redis нужно добавить ssl_cert_reqs для rediss://
     if REDIS_URL.startswith("rediss://"):
-        REDIS_URL = REDIS_URL + "?ssl_cert_reqs=CERT_NONE"
+        REDIS_URL = REDIS_URL + "?ssl_cert_reqs=None"
     
     # Скрываем пароль в логах для безопасности
     safe_redis_url = REDIS_URL.split('@')[-1] if '@' in REDIS_URL else REDIS_URL
