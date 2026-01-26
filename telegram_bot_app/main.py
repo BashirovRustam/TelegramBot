@@ -45,6 +45,35 @@ dp = None
 bot_task = None  # Только для polling режима
 
 
+async def webhook_monitor_task():
+    """Фоновая задача для мониторинга и восстановления webhook"""
+    global WEBHOOK_URL, bot_instance
+    
+    if not WEBHOOK_URL or not bot_instance:
+        return
+        
+    logger.info("🔔 Запуск монитора webhook")
+    
+    while True:
+        try:
+            await asyncio.sleep(30)  # Проверяем каждые 30 секунд
+            
+            webhook_info = await bot_instance.get_webhook_info()
+            if webhook_info.url != WEBHOOK_URL:
+                logger.warning(f"⚠️ Webhook сброшен! Текущий: {webhook_info.url}, должно быть: {WEBHOOK_URL}")
+                await bot_instance.set_webhook(
+                    url=WEBHOOK_URL,
+                    drop_pending_updates=True
+                )
+                logger.info("🔄 Webhook восстановлен монитором")
+            else:
+                logger.debug("✅ Webhook в порядке")
+                
+        except Exception as e:
+            logger.error(f"❌ Ошибка монитора webhook: {e}")
+            await asyncio.sleep(60)  # При ошибке ждем дольше
+
+
 async def init_bot():
     """Общая инициализация бота и диспетчера"""
     global bot_instance, dp
@@ -115,6 +144,19 @@ async def lifespan(app: FastAPI):
                 drop_pending_updates=True
             )
             logger.info("✅ Webhook установлен принудительно")
+            
+            # Пауза и повторная проверка
+            await asyncio.sleep(2)
+            webhook_info_after = await bot_instance.get_webhook_info()
+            logger.info(f"🔍 Проверка после установки: {webhook_info_after.url}")
+            
+            if webhook_info_after.url != WEBHOOK_URL:
+                logger.warning("⚠️ Webhook не установился, пробуем еще раз...")
+                await bot_instance.set_webhook(
+                    url=WEBHOOK_URL,
+                    drop_pending_updates=True
+                )
+                logger.info("🔄 Повторная установка webhook завершена")
                 
             logger.info(f"🌐 Бот запущен в режиме WEBHOOK. URL: {WEBHOOK_URL}")
         except Exception as e:
@@ -129,6 +171,9 @@ async def lifespan(app: FastAPI):
 
     try:
         yield
+        # Фоновая задача для проверки webhook в режиме webhook
+        if RENDER_EXTERNAL_URL and bot_instance:
+            asyncio.create_task(webhook_monitor_task())
     except Exception as e:
         logger.error(f"❌ Ошибка во время работы приложения: {e}")
         raise
