@@ -65,7 +65,7 @@ class UserService:
 
             self.db.add(new_user)
             await self.db.commit()  # Используем commit вместо flush
-            await self.db.refresh(new_user)  # Получаем ID из БД
+            await self.db.refresh(new_user)  # Получаем ID из БD
 
             logger.info(
                 "✅ Создан новый пользователь: user_id=%d, telegram_id=%d, name=%s",
@@ -75,6 +75,15 @@ class UserService:
             return new_user
 
         except Exception as e:
+            # Если ошибка дубликата ID, попробуем найти пользователя еще раз
+            if "duplicate key value violates unique constraint" in str(e):
+                logger.warning("⚠️ Обнаружен дубликат ID, пробуем найти пользователя повторно...")
+                await self.db.rollback()
+                user = await self.user_crud.get_by_telegram_id(telegram_id)
+                if user:
+                    logger.info(f"✅ Пользователь найден после ошибки: user_id={user.id}")
+                    return user
+            
             logger.error(
                 "❌ Ошибка создания/получения пользователя telegram_id=%d: %s",
                 telegram_id, e, exc_info=True

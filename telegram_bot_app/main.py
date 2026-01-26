@@ -90,6 +90,10 @@ async def init_bot():
     
     REDIS_URL = upstash_redis_url or redis_url or "redis://localhost:6379/0"
     
+    # Для Upstash Redis нужно добавить ssl_cert_reqs для rediss://
+    if REDIS_URL.startswith("rediss://"):
+        REDIS_URL = REDIS_URL + "?ssl_cert_reqs=CERT_NONE"
+    
     # Скрываем пароль в логах для безопасности
     safe_redis_url = REDIS_URL.split('@')[-1] if '@' in REDIS_URL else REDIS_URL
     logger.info(f"🎯 Используется Redis URL: {safe_redis_url}")
@@ -252,9 +256,7 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    logger.info("🏥 Health check запрос")
     status = {"status": "healthy", "bot_active": bot_instance is not None}
-    logger.info(f"🏥 Health check ответ: {status}")
     return status
 
 
