@@ -82,7 +82,7 @@ class AppointmentNotificationScheduler:
                 # Например, если notify_hours_before = 1 и check_interval = 5 минут
                 # То ищем записи, которые начнутся через 55-65 минут
 
-                margin_minutes = 1  # Окно в ±1 минуту для точного уведомления
+                margin_minutes = 3  # Окно в ±3 минуты для надежного уведомления
 
                 target_time_start = now + timedelta(
                     hours=self.notify_hours_before,
@@ -93,7 +93,7 @@ class AppointmentNotificationScheduler:
                     minutes=margin_minutes
                 )
 
-                logger.debug(
+                logger.info(
                     f"🔍 Checking appointments between "
                     f"{target_time_start.strftime('%Y-%m-%d %H:%M')} and "
                     f"{target_time_end.strftime('%Y-%m-%d %H:%M')}"

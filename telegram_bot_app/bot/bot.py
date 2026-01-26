@@ -35,7 +35,7 @@ async def on_startup(bot: Bot):
         # Создаем и запускаем планировщик уведомлений за 1 час до записи
         notification_scheduler = AppointmentNotificationScheduler(
             bot=bot,
-            check_interval_minutes=5,  # Проверяем каждые 5 минут
+            check_interval_minutes=2,  # Проверяем каждые 2 минуты
             notify_hours_before=1  # Уведомляем за 1 час
         )
         await notification_scheduler.start()
