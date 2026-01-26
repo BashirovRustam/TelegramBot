@@ -95,7 +95,11 @@ async def main():
         logger.info(f"🎯 Используется Redis URL: {safe_redis_url}")
 
         # Подключение через from_url с SSL опциями
-        redis_client = redis.from_url(REDIS_URL, decode_responses=False, **({"ssl": ssl_options} if ssl_options else {}))
+        connection_kwargs = {}
+        if ssl_options:
+            connection_kwargs["ssl"] = ssl_options
+        
+        redis_client = redis.from_url(REDIS_URL, decode_responses=False, **connection_kwargs)
         storage = RedisStorage(redis_client)
         logger.info("✅ Redis подключен")
 
