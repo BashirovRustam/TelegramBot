@@ -113,6 +113,10 @@ async def cancel_appointment_callback(callback: CallbackQuery):
             logger.info("✅ Запись отменена: appointment_id=%d, user_id=%d", appointment_id, user.id)
             await callback.answer(f"✅ Запись #{appointment_id} отменена", show_alert=True)
 
+            # 🔔 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ ОБ ОТМЕНЕ
+            from telegram_bot_app.celery_app.tasks import _send_cancellation_async
+            await _send_cancellation_async(appointment_id, user.telegram_id, callback.bot)
+
             # Обновляем сообщение
             await callback.message.edit_text(
                 callback.message.text + f"\n\n~~❌ Запись #{appointment_id} отменена~~",

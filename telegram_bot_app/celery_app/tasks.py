@@ -33,14 +33,16 @@ def send_appointment_confirmation(appointment_id: int):
     return run_async(_send_confirmation_async(appointment_id))
 
 
-async def _send_confirmation_async(appointment_id: int):
+async def _send_confirmation_async(appointment_id: int, bot: Bot = None):
     """Асинхронная отправка подтверждения"""
     logger.info("Отправка подтверждения для записи #%d", appointment_id)
 
-    bot = Bot(
-        token=settings.BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
-    )
+    # Используем переданный бот или создаем новый
+    if bot is None:
+        bot = Bot(
+            token=settings.BOT_TOKEN,
+            default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
+        )
 
     try:
         async with async_session() as db:
@@ -240,14 +242,16 @@ def send_cancellation_notification(appointment_id: int, client_telegram_id: int)
     return run_async(_send_cancellation_async(appointment_id, client_telegram_id))
 
 
-async def _send_cancellation_async(appointment_id: int, client_telegram_id: int):
+async def _send_cancellation_async(appointment_id: int, client_telegram_id: int, bot: Bot = None):
     """Асинхронная отправка уведомления об отмене"""
     logger.info("Отправка уведомления об отмене записи #%d", appointment_id)
 
-    bot = Bot(
-        token=settings.BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
-    )
+    # Используем переданный бот или создаем новый
+    if bot is None:
+        bot = Bot(
+            token=settings.BOT_TOKEN,
+            default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
+        )
 
     try:
         message = (

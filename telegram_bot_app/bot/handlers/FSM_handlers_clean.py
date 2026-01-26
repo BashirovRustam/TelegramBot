@@ -232,7 +232,7 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext):
     action = callback.data.split(":")[1]
 
     if action == "confirm":
-        await create_appointment_record(callback, state)
+        await create_appointment_record(callback, state, callback.bot)
     elif action == "cancel":
         await callback.message.edit_text(
             "❌ Запись отменена\n\n"
@@ -243,7 +243,7 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-async def create_appointment_record(callback: CallbackQuery, state: FSMContext):
+async def create_appointment_record(callback: CallbackQuery, state: FSMContext, bot):
     """Создание записи в БД"""
     data = await state.get_data()
 
@@ -297,7 +297,7 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext):
     if result:
         # 🔔 ОТПРАВЛЯЕМ ПОДТВЕРЖДЕНИЕ НАПРЯМУЮ (без Celery)
         from telegram_bot_app.celery_app.tasks import _send_confirmation_async
-        await _send_confirmation_async(result['id'])
+        await _send_confirmation_async(result['id'], bot)
 
         from datetime import datetime
         date_obj = datetime.strptime(selected_date, "%Y-%m-%d").date()
