@@ -85,29 +85,15 @@ async def main():
         
         REDIS_URL = upstash_redis_url or redis_url or "redis://localhost:6379/0"
         
-        # Для Upstash Redis настраиваем SSL отдельно
-        ssl_options = None
-        if REDIS_URL.startswith("rediss://"):
-            ssl_options = {"ssl_cert_reqs": None}
+        # Для Upstash Redis просто используем rediss:// URL без дополнительных параметров
+        # redis-py автоматически обработает SSL для rediss://
         
         # Скрываем пароль в логах для безопасности
         safe_redis_url = REDIS_URL.split('@')[-1] if '@' in REDIS_URL else REDIS_URL
         logger.info(f"🎯 Используется Redis URL: {safe_redis_url}")
 
-        # Подключение через from_url с SSL опциями для Upstash
-        connection_kwargs = {}
-        if ssl_options:
-            # Для Upstash Redis используем правильный способ передачи SSL
-            import ssl
-            connection_kwargs = {
-                "connection_pool_kwargs": {
-                    "ssl_cert_reqs": ssl.CERT_NONE,
-                    "ssl_check_hostname": False,
-                    "ssl_verify_mode": ssl.CERT_NONE
-                }
-            }
-        
-        redis_client = redis.from_url(REDIS_URL, decode_responses=False, **connection_kwargs)
+        # Подключение через from_url - redis-py автоматически обработает SSL для rediss://
+        redis_client = redis.from_url(REDIS_URL, decode_responses=False)
         storage = RedisStorage(redis_client)
         logger.info("✅ Redis подключен")
 
