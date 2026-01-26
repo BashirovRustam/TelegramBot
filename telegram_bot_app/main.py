@@ -267,10 +267,10 @@ async def root():
     }
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
-    status = {"status": "healthy", "bot_active": bot_instance is not None}
-    return status
+    return {"status": "healthy"}
+
 
 
 if __name__ == "__main__":
