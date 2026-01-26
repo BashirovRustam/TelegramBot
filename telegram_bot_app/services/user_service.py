@@ -18,12 +18,7 @@ class UserService:
             full_name: str,
             role: UserRoleEnum = UserRoleEnum.CLIENT
     ) -> User:
-        """Получить пользователя или создать, если не существует."""
-
-        logger.info(
-            "Поиск/создание пользователя: telegram_id=%d, name=%s",
-            telegram_id, full_name
-        )
+        """Найти или создать пользователя"""
 
         try:
             # Проверяем, существует ли пользователь
@@ -50,7 +45,6 @@ class UserService:
             
             if sql_user:
                 logger.info("✅ Пользователь найден через SQL, создаем объект")
-                from telegram_bot_app.models.user import User, UserRoleEnum
                 user = User(
                     id=sql_user[0],
                     telegram_id=sql_user[1], 
