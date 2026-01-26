@@ -4,7 +4,8 @@ from telegram_bot_app.core.config import settings
 import os
 
 # Создаем экземпляр Celery
-REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/1")
+# Приоритет: UPSTASH_REDIS_URL (для Render), затем REDIS_URL, затем локальный Redis
+REDIS_URL = os.environ.get("UPSTASH_REDIS_URL") or os.environ.get("REDIS_URL", "redis://localhost:6379/1")
 celery_app = Celery(
     "beauty_salon_bot",
     broker=REDIS_URL,
