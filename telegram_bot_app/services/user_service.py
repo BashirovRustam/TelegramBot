@@ -28,11 +28,34 @@ class UserService:
         try:
             # Проверяем, существует ли пользователь
             user = await self.user_crud.get_by_telegram_id(telegram_id)
+            
+            logger.info(f"🔍 Результат поиска пользователя: {user}")
 
-            if user:
+            if user is not None:
                 logger.info(
                     "✅ Пользователь найден: user_id=%d, telegram_id=%d",
                     user.id, telegram_id
+                )
+                return user
+
+            # Дополнительная проверка через прямой SQL запрос
+            logger.info("🔄 Дополнительная проверка через SQL...")
+            result = await self.db.execute(
+                "SELECT id, telegram_id, full_name FROM users WHERE telegram_id = :telegram_id",
+                {"telegram_id": telegram_id}
+            )
+            sql_user = result.fetchone()
+            logger.info(f"🔍 SQL результат: {sql_user}")
+            
+            if sql_user:
+                logger.info("✅ Пользователь найден через SQL, создаем объект")
+                from telegram_bot_app.models.user import User, UserRoleEnum
+                user = User(
+                    id=sql_user[0],
+                    telegram_id=sql_user[1], 
+                    full_name=sql_user[2],
+                    role=UserRoleEnum.CLIENT,
+                    is_active=True
                 )
                 return user
 
