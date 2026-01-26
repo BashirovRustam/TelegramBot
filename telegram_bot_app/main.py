@@ -167,9 +167,19 @@ async def bot_webhook(request: Request):
     if not RENDER_EXTERNAL_URL:
         return {"ok": False, "error": "Webhook not configured"}
 
-    update = types.Update.model_validate(await request.json(), context={"bot": bot_instance})
-    await dp.feed_update(bot_instance, update)
-    return {"ok": True}
+    try:
+        logger.info(f"📨 Получен webhook запрос от {request.client.host}")
+        update_data = await request.json()
+        logger.info(f"📋 Данные обновления: {update_data.get('update_id', 'unknown')}")
+        
+        update = types.Update.model_validate(update_data, context={"bot": bot_instance})
+        await dp.feed_update(bot_instance, update)
+        
+        logger.info("✅ Webhook обработан успешно")
+        return {"ok": True}
+    except Exception as e:
+        logger.error(f"❌ Ошибка обработки webhook: {e}")
+        return {"ok": False, "error": str(e)}
 
 
 @app.get("/")
@@ -183,7 +193,10 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "bot_active": bot_instance is not None}
+    logger.info("🏥 Health check запрос")
+    status = {"status": "healthy", "bot_active": bot_instance is not None}
+    logger.info(f"🏥 Health check ответ: {status}")
+    return status
 
 
 if __name__ == "__main__":
