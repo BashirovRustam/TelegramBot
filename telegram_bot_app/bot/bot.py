@@ -76,7 +76,18 @@ async def main():
         logger.info("📡 Подключение к Redis...")
 
         # Берем URL Redis из переменных окружения
-        REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+        # Приоритет: UPSTASH_REDIS_URL (для Render), затем REDIS_URL, затем локальный Redis
+        upstash_redis_url = os.environ.get("UPSTASH_REDIS_URL")
+        redis_url = os.environ.get("REDIS_URL")
+        
+        logger.info(f"🔍 UPSTASH_REDIS_URL: {'✅ установлен' if upstash_redis_url else '❌ не установлен'}")
+        logger.info(f"🔍 REDIS_URL: {'✅ установлен' if redis_url else '❌ не установлен'}")
+        
+        REDIS_URL = upstash_redis_url or redis_url or "redis://localhost:6379/0"
+        
+        # Скрываем пароль в логах для безопасности
+        safe_redis_url = REDIS_URL.split('@')[-1] if '@' in REDIS_URL else REDIS_URL
+        logger.info(f"🎯 Используется Redis URL: {safe_redis_url}")
 
         # Подключение через from_url
         redis_client = redis.from_url(REDIS_URL, decode_responses=False)

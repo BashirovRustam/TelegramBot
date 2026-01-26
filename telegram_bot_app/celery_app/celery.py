@@ -4,7 +4,18 @@ from telegram_bot_app.core.config import settings
 import os
 
 # Создаем экземпляр Celery
-REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/1")
+# Приоритет: UPSTASH_REDIS_URL (для Render), затем REDIS_URL, затем локальный Redis
+upstash_redis_url = os.environ.get("UPSTASH_REDIS_URL")
+redis_url = os.environ.get("REDIS_URL")
+
+print(f"🔍 Celery - UPSTASH_REDIS_URL: {'✅ установлен' if upstash_redis_url else '❌ не установлен'}")
+print(f"🔍 Celery - REDIS_URL: {'✅ установлен' if redis_url else '❌ не установлен'}")
+
+REDIS_URL = upstash_redis_url or redis_url or "redis://localhost:6379/1"
+
+# Скрываем пароль в логах для безопасности
+safe_redis_url = REDIS_URL.split('@')[-1] if '@' in REDIS_URL else REDIS_URL
+print(f"🎯 Celery использует Redis URL: {safe_redis_url}")
 celery_app = Celery(
     "beauty_salon_bot",
     broker=REDIS_URL,
