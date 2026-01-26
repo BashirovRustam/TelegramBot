@@ -76,7 +76,8 @@ async def main():
         logger.info("📡 Подключение к Redis...")
 
         # Берем URL Redis из переменных окружения
-        REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+        # Приоритет: UPSTASH_REDIS_URL (для Render), затем REDIS_URL, затем локальный Redis
+        REDIS_URL = os.environ.get("UPSTASH_REDIS_URL") or os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
         # Подключение через from_url
         redis_client = redis.from_url(REDIS_URL, decode_responses=False)
