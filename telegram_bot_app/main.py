@@ -99,10 +99,18 @@ async def init_bot():
     safe_redis_url = REDIS_URL.split('@')[-1] if '@' in REDIS_URL else REDIS_URL
     logger.info(f"🎯 Используется Redis URL: {safe_redis_url}")
 
-    # Подключение через from_url с SSL опциями
+    # Подключение через from_url с SSL опциями для Upstash
     connection_kwargs = {}
     if ssl_options:
-        connection_kwargs["ssl"] = ssl_options
+        # Для Upstash Redis используем правильный способ передачи SSL
+        import ssl
+        connection_kwargs = {
+            "connection_pool_kwargs": {
+                "ssl_cert_reqs": ssl.CERT_NONE,
+                "ssl_check_hostname": False,
+                "ssl_verify_mode": ssl.CERT_NONE
+            }
+        }
     
     redis_client = redis.from_url(REDIS_URL, decode_responses=False, **connection_kwargs)
     storage = RedisStorage(redis_client)
