@@ -108,7 +108,8 @@ async def lifespan(app: FastAPI):
             webhook_info = await bot_instance.get_webhook_info()
             logger.info(f"📋 Текущий webhook: {webhook_info.url}")
             
-            if webhook_info.url != WEBHOOK_URL:
+            # Устанавливаем webhook только если он не установлен или неверный
+            if not webhook_info.url or webhook_info.url != WEBHOOK_URL:
                 logger.info(f"🔄 Установка нового webhook: {WEBHOOK_URL}")
                 await bot_instance.set_webhook(
                     url=WEBHOOK_URL,
@@ -116,12 +117,13 @@ async def lifespan(app: FastAPI):
                 )
                 logger.info("✅ Webhook установлен")
             else:
-                logger.info("✅ Webhook уже настроен")
+                logger.info("✅ Webhook уже настроен корректно")
                 
             logger.info(f"🌐 Бот запущен в режиме WEBHOOK. URL: {WEBHOOK_URL}")
         except Exception as e:
             logger.error(f"❌ Ошибка при настройке webhook: {e}")
-            raise
+            # Не прерываем запуск приложения при ошибке webhook
+            logger.warning("⚠️ Продолжаем запуск без webhook")
     else:
         # --- РЕЖИМ POLLING (Локально) ---
         await bot_instance.delete_webhook(drop_pending_updates=True)

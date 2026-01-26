@@ -31,8 +31,14 @@ class UserCRUD:
 
     async def get_by_telegram_id(self, telegram_id: int) -> Optional[User]:
         """Получить пользователя по telegram_id"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"🔍 CRUD: Поиск пользователя по telegram_id={telegram_id}")
         result = await self.db.execute(select(User).where(User.telegram_id == telegram_id))
-        return result.scalar_one_or_none()
+        user = result.scalar_one_or_none()
+        logger.info(f"🔍 CRUD: Результат поиска: {user}")
+        return user
 
     async def get_by_role(self, role: UserRoleEnum, skip: int = 0, limit: int = 100) -> List[User]:
         """Получить пользователей по роли"""
