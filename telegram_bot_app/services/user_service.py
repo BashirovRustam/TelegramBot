@@ -20,7 +20,7 @@ class UserService:
     ) -> User:
         """Получить пользователя или создать, если не существует."""
 
-        logger.debug(
+        logger.info(
             "Поиск/создание пользователя: telegram_id=%d, name=%s",
             telegram_id, full_name
         )
@@ -30,13 +30,14 @@ class UserService:
             user = await self.user_crud.get_by_telegram_id(telegram_id)
 
             if user:
-                logger.debug(
-                    "Пользователь найден: user_id=%d, telegram_id=%d",
+                logger.info(
+                    "✅ Пользователь найден: user_id=%d, telegram_id=%d",
                     user.id, telegram_id
                 )
                 return user
 
             # Создаем нового пользователя
+            logger.info("🆕 Создание нового пользователя...")
             new_user = User(
                 telegram_id=telegram_id,
                 full_name=full_name,
@@ -45,7 +46,8 @@ class UserService:
             )
 
             self.db.add(new_user)
-            await self.db.flush()
+            await self.db.commit()  # Используем commit вместо flush
+            await self.db.refresh(new_user)  # Получаем ID из БД
 
             logger.info(
                 "✅ Создан новый пользователь: user_id=%d, telegram_id=%d, name=%s",
@@ -56,9 +58,10 @@ class UserService:
 
         except Exception as e:
             logger.error(
-                "Ошибка создания/получения пользователя telegram_id=%d: %s",
+                "❌ Ошибка создания/получения пользователя telegram_id=%d: %s",
                 telegram_id, e, exc_info=True
             )
+            await self.db.rollback()  # Откатываем транзакцию при ошибке
             raise
 
     async def create_user_without_telegram(
@@ -82,7 +85,8 @@ class UserService:
             )
 
             self.db.add(new_user)
-            await self.db.flush()
+            await self.db.commit()  # Используем commit вместо flush
+            await self.db.refresh(new_user)  # Получаем ID из БД
 
             logger.info(
                 "✅ Создан пользователь (без Telegram): user_id=%d, name=%s",
@@ -93,9 +97,10 @@ class UserService:
 
         except Exception as e:
             logger.error(
-                "Ошибка создания пользователя без Telegram: %s",
+                "❌ Ошибка создания пользователя без Telegram: %s",
                 e, exc_info=True
             )
+            await self.db.rollback()  # Откатываем транзакцию при ошибке
             raise
 
     async def get_by_telegram_id(self, telegram_id: int) -> Optional[User]:
