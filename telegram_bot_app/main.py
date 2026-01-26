@@ -42,7 +42,8 @@ except ValueError as e:
 # Глобальные переменные
 bot_instance = None
 dp = None
-bot_task = None  # Только для polling режима
+bot_task = None
+notification_scheduler = None  # Только для polling режима
 
 
 async def webhook_monitor_task():
@@ -122,13 +123,26 @@ async def init_bot():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Управление жизненным циклом приложения"""
-    global bot_instance, dp, bot_task
+    global bot_instance, dp, bot_task, notification_scheduler
 
     logger.info("🚀 Запуск приложения...")
     
     try:
         await init_bot()
         logger.info("✅ Инициализация бота завершена")
+        
+        # Запускаем планировщик уведомлений
+        try:
+            from telegram_bot_app.scheduler.background_scheduler import AppointmentNotificationScheduler
+            notification_scheduler = AppointmentNotificationScheduler(
+                bot=bot_instance,
+                check_interval_minutes=2,  # Проверяем каждые 2 минуты
+                notify_hours_before=1  # Уведомляем за 1 час
+            )
+            await notification_scheduler.start()
+            logger.info("✅ Background notification scheduler started successfully from main")
+        except Exception as e:
+            logger.error(f"❌ Failed to start scheduler from main: {e}", exc_info=True)
     except Exception as e:
         logger.error(f"❌ Ошибка при инициализации бота: {e}")
         raise

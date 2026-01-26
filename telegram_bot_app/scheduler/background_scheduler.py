@@ -56,6 +56,7 @@ class AppointmentNotificationScheduler:
         """Основной цикл планировщика"""
         while self.is_running:
             try:
+                logger.info(f"🔄 Scheduler check at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
                 await self._check_and_send_notifications()
                 await asyncio.sleep(self.check_interval)
             except asyncio.CancelledError:
@@ -111,8 +112,10 @@ class AppointmentNotificationScheduler:
                 appointments = result.scalars().all()
 
                 if not appointments:
-                    logger.debug("📭 No pending appointments in database")
+                    logger.info("📭 No pending appointments in database")
                     return
+
+                logger.info(f"📋 Found {len(appointments)} pending appointments to check")
 
                 # Фильтруем записи по времени
                 notifications_sent = 0
@@ -125,14 +128,19 @@ class AppointmentNotificationScheduler:
                         appointment.time_start
                     )
 
+                    logger.info(f"🔍 Checking appointment #{appointment.id} at {appointment_datetime.strftime('%Y-%m-%d %H:%M')}")
+
                     # Проверяем, попадает ли запись в целевое окно
                     if target_time_start <= appointment_datetime <= target_time_end:
+                        logger.info(f"⏰ Appointment #{appointment.id} is in notification window!")
                         try:
                             await self._send_notification(appointment, session)
                             notifications_sent += 1
                         except Exception as e:
                             notifications_failed += 1
                             logger.error(f"❌ Failed to send notification for appointment #{appointment.id}: {e}")
+                    else:
+                        logger.info(f"⏭️ Appointment #{appointment.id} not in notification window")
 
                 if notifications_sent > 0:
                     logger.info(f"📬 Sent {notifications_sent} notification(s)")
