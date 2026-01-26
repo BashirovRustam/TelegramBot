@@ -1,0 +1,51 @@
+2026-01-26 02:36:42 | ERROR    | aiogram.dispatcher             | _listen_updates     :225 | Failed to fetch updates - TelegramNetworkError: HTTP Client says - Request timeout error
+2026-01-26 03:52:58 | ERROR    | aiogram.dispatcher             | _listen_updates     :225 | Failed to fetch updates - TelegramNetworkError: HTTP Client says - Request timeout error
+2026-01-26 04:18:56 | ERROR    | aiogram.dispatcher             | _listen_updates     :225 | Failed to fetch updates - TelegramNetworkError: HTTP Client says - Request timeout error
+2026-01-26 06:32:03 | ERROR    | aiogram.dispatcher             | _listen_updates     :225 | Failed to fetch updates - TelegramNetworkError: HTTP Client says - Request timeout error
+2026-01-26 08:05:22 | ERROR    | aiogram.dispatcher             | _listen_updates     :225 | Failed to fetch updates - TelegramNetworkError: HTTP Client says - Request timeout error
+2026-01-26 09:09:14 | ERROR    | aiogram.dispatcher             | _listen_updates     :225 | Failed to fetch updates - TelegramNetworkError: HTTP Client says - Request timeout error
+2026-01-26 10:43:19 | ERROR    | aiogram.dispatcher             | _listen_updates     :225 | Failed to fetch updates - TelegramNetworkError: HTTP Client says - Request timeout error
+2026-01-26 16:31:45 | ERROR    | telegram_bot_app.scheduler.background_scheduler | _send_notification  :191 | ❌ Failed to send notification for appointment #54: 'Master' object has no attribute 'name'
+Traceback (most recent call last):
+  File "/Users/macbook/Desktop/TelegramBot/telegram_bot_app/scheduler/background_scheduler.py", line 167, in _send_notification
+    f"👤 *Мастер:* {self._escape_markdown(appointment.master.name)}\n"
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'Master' object has no attribute 'name'
+2026-01-26 16:32:26 | ERROR    | telegram_bot_app.scheduler.background_scheduler | _send_notification  :191 | ❌ Failed to send notification for appointment #54: Telegram server says - Bad Request: chat not found
+Traceback (most recent call last):
+  File "/Users/macbook/Desktop/TelegramBot/telegram_bot_app/scheduler/background_scheduler.py", line 174, in _send_notification
+    await self.bot.send_message(
+  File "/Users/macbook/Desktop/TelegramBot/.venv/lib/python3.12/site-packages/aiogram/client/bot.py", line 2916, in send_message
+    return await self(call, request_timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/macbook/Desktop/TelegramBot/.venv/lib/python3.12/site-packages/aiogram/client/bot.py", line 484, in __call__
+    return await self.session(self, method, timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/macbook/Desktop/TelegramBot/.venv/lib/python3.12/site-packages/aiogram/client/session/base.py", line 259, in __call__
+    return cast(TelegramType, await middleware(bot, method))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/macbook/Desktop/TelegramBot/.venv/lib/python3.12/site-packages/aiogram/client/session/aiohttp.py", line 177, in make_request
+    response = self.check_response(
+               ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/macbook/Desktop/TelegramBot/.venv/lib/python3.12/site-packages/aiogram/client/session/base.py", line 121, in check_response
+    raise TelegramBadRequest(method=method, message=description)
+aiogram.exceptions.TelegramBadRequest: Telegram server says - Bad Request: chat not found
+2026-01-26 16:38:04 | ERROR    | telegram_bot_app.scheduler.background_scheduler | _send_notification  :198 | ❌ Failed to send notification for appointment #55: Telegram server says - Bad Request: chat not found
+Traceback (most recent call last):
+  File "/Users/macbook/Desktop/TelegramBot/telegram_bot_app/scheduler/background_scheduler.py", line 181, in _send_notification
+    await self.bot.send_message(
+  File "/Users/macbook/Desktop/TelegramBot/.venv/lib/python3.12/site-packages/aiogram/client/bot.py", line 2916, in send_message
+    return await self(call, request_timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/macbook/Desktop/TelegramBot/.venv/lib/python3.12/site-packages/aiogram/client/bot.py", line 484, in __call__
+    return await self.session(self, method, timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/macbook/Desktop/TelegramBot/.venv/lib/python3.12/site-packages/aiogram/client/session/base.py", line 259, in __call__
+    return cast(TelegramType, await middleware(bot, method))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/macbook/Desktop/TelegramBot/.venv/lib/python3.12/site-packages/aiogram/client/session/aiohttp.py", line 177, in make_request
+    response = self.check_response(
+               ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/macbook/Desktop/TelegramBot/.venv/lib/python3.12/site-packages/aiogram/client/session/base.py", line 121, in check_response
+    raise TelegramBadRequest(method=method, message=description)
+aiogram.exceptions.TelegramBadRequest: Telegram server says - Bad Request: chat not found

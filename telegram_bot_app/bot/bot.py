@@ -16,8 +16,50 @@ from telegram_bot_app.bot.handlers.start import router as start_router
 from telegram_bot_app.bot.handlers.FSM_handlers_clean import router as booking_router
 from telegram_bot_app.bot.handlers.my_appointments_hendler import router as my_appointments_router
 
+# Импортируем планировщик
+from telegram_bot_app.scheduler.background_scheduler import AppointmentNotificationScheduler
 
 logger = logging.getLogger(__name__)
+
+# Глобальная переменная для планировщика
+notification_scheduler = None
+
+
+async def on_startup(bot: Bot):
+    """Действия при запуске бота"""
+    global notification_scheduler
+
+    logger.info("🚀 Bot startup sequence initiated...")
+
+    try:
+        # Создаем и запускаем планировщик уведомлений за 1 час до записи
+        notification_scheduler = AppointmentNotificationScheduler(
+            bot=bot,
+            check_interval_minutes=5,  # Проверяем каждые 5 минут
+            notify_hours_before=1  # Уведомляем за 1 час
+        )
+        await notification_scheduler.start()
+
+        logger.info("✅ Background notification scheduler started successfully")
+
+    except Exception as e:
+        logger.error(f"❌ Failed to start scheduler: {e}", exc_info=True)
+
+
+async def on_shutdown(bot: Bot):
+    """Действия при остановке бота"""
+    global notification_scheduler
+
+    logger.info("🛑 Bot shutdown sequence initiated...")
+
+    try:
+        if notification_scheduler:
+            await notification_scheduler.stop()
+
+        logger.info("✅ Background scheduler stopped successfully")
+
+    except Exception as e:
+        logger.error(f"❌ Error stopping scheduler: {e}", exc_info=True)
 
 
 async def main():
@@ -32,10 +74,10 @@ async def main():
         # 2️⃣ REDIS + FSM
         # =========================
         logger.info("📡 Подключение к Redis...")
-        
+
         # Берем URL Redis из переменных окружения
         REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-        
+
         # Подключение через from_url
         redis_client = redis.from_url(REDIS_URL, decode_responses=False)
         storage = RedisStorage(redis_client)
@@ -55,6 +97,7 @@ async def main():
         # =========================
         dp = Dispatcher(storage=storage, bot=bot)
 
+        # Регистрируем роутеры
         dp.include_router(start_router)
         dp.include_router(booking_router)
         dp.include_router(my_appointments_router)
@@ -62,7 +105,14 @@ async def main():
         logger.info("✅ Роутеры подключены")
 
         # =========================
-        # 5️⃣ POLLING
+        # 5️⃣ STARTUP/SHUTDOWN HOOKS
+        # =========================
+        dp.startup.register(on_startup)
+        dp.shutdown.register(on_shutdown)
+        logger.info("✅ Lifecycle hooks registered")
+
+        # =========================
+        # 6️⃣ POLLING
         # =========================
         logger.info("🚀 Запуск polling...")
         await bot.delete_webhook(drop_pending_updates=True)
@@ -74,6 +124,11 @@ async def main():
             exc_info=True
         )
         raise
+    finally:
+        # Закрываем соединение с Redis
+        if 'redis_client' in locals():
+            await redis_client.close()
+            logger.info("✅ Redis connection closed")
 
 
 if __name__ == "__main__":

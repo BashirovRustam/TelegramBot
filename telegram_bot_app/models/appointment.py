@@ -1,5 +1,5 @@
 from datetime import datetime, date, time
-from sqlalchemy import String, Integer, ForeignKey, DateTime, Date, Time, Enum, BigInteger
+from sqlalchemy import String, Integer, ForeignKey, DateTime, Date, Time, Enum, BigInteger, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from telegram_bot_app.db.base import Base
 from enum import Enum as PyEnum
@@ -24,6 +24,7 @@ class Appointment(Base):
     time_end: Mapped[time] = mapped_column(Time, nullable=False)
     status: Mapped[AppointmentStatusEnum] = mapped_column(Enum(AppointmentStatusEnum), nullable=False, default=AppointmentStatusEnum.BOOKED)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    notified: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
     # Relationships с lazy='joined' для автоматической загрузки
     client: Mapped["User"] = relationship("User", back_populates="appointments_as_client", foreign_keys=[client_id], lazy="joined")
