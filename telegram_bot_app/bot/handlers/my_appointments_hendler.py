@@ -67,6 +67,7 @@ async def my_appointments_handler(message: Message):
                 f"💇 Услуга: {service.name if service else 'Не указана'}\n"
                 f"👨‍💼 Мастер: {master_name}\n"
                 f"🏛️ Салон: {salon.name if salon else 'Не указан'}\n"
+                f"📍 Адрес: {salon.address if salon and salon.address else 'Не указан'}\n"
                 f"💰 Цена: {service.price if service else 'Не указана'} тг"
             )
 

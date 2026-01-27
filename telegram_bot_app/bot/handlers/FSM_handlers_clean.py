@@ -81,11 +81,22 @@ async def salon_selected(callback: CallbackQuery, state: FSMContext):
     await state.update_data(salon_id=salon_id, salon_name=salon.name)
 
     salon_name = salon.name if salon else "выбран"
+    salon_address = salon.address if salon and salon.address else "Не указан"
+    salon_gis_link = salon.gis_link if salon and salon.gis_link else None
 
-    await callback.message.edit_text(
-        f"✅ Салон выбран: {salon_name}\n\n"
-        f"🔄 Теперь выберите услугу."
+    # Формируем сообщение с информацией о салоне
+    message_text = (
+        f"✅ Салон выбран: {salon_name}\n"
+        f"📍 Адрес: {salon_address}\n"
     )
+    
+    # Добавляем ссылку на 2GIS если она есть
+    if salon_gis_link:
+        message_text += f"🗺️ [Посмотреть на карте]({salon_gis_link})\n"
+    
+    message_text += f"\n🔄 Теперь выберите услугу."
+
+    await callback.message.edit_text(message_text, parse_mode="Markdown")
 
     await show_services_for_salon(callback.message, state, salon_id)
 
@@ -280,6 +291,10 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext, 
 
         print(f"DEBUG FSM: User created/found - id={user.id}, telegram_id={user.telegram_id}")
 
+        # Получаем информацию о салоне для адреса
+        salon_service = SalonService(db)
+        salon = await salon_service.get_by_id(salon_id)
+
         # Создаем запись используя user.id (а не telegram_id)
         appointment_service = AppointmentService(db)
         result = await appointment_service.create_appointment(
@@ -335,6 +350,7 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext, 
             f"✅ **Запись успешно создана!**\n\n"
             f"📋 Номер записи: #{result['id']}\n"
             f"🏛️ Салон: {data.get('salon_name', 'Не указан')}\n"
+            f"📍 Адрес: {salon.address if salon and salon.address else 'Не указан'}\n"
             f"✨ Услуга: {result['service_name']}\n"
             f"👨‍💼 Мастер: {data.get('master_name', 'Не указан')}\n"
             f"📅 Дата: {formatted_date}\n"
