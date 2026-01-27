@@ -191,11 +191,20 @@ class AppointmentNotificationScheduler:
                 f"✨ Ждем вас\\!"
             )
 
+            # Создаем клавиатуру с кнопкой 2GIS если ссылка доступна
+            keyboard = None
+            if appointment.salon.gis_link:
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="📍 Показать на карте", url=appointment.salon.gis_link)]
+                ])
+
             # Отправляем сообщение
             await self.bot.send_message(
                 chat_id=appointment.client.telegram_id,
                 text=message,
-                parse_mode="MarkdownV2"
+                parse_mode="MarkdownV2",
+                reply_markup=keyboard
             )
 
             # Отмечаем как уведомленное
