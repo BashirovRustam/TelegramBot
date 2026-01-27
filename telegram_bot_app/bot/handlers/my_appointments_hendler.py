@@ -70,13 +70,28 @@ async def my_appointments_handler(message: Message):
                 f"💰 Цена: {service.price if service else 'Не указана'} тг"
             )
 
-            # Создаем клавиатуру только для этой записи
-            keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+            # Создаем клавиатуру с кнопками отмены и карты
+            keyboard_buttons = []
+            
+            # Кнопка отмены записи
+            keyboard_buttons.append(
                 InlineKeyboardButton(
                     text=f"❌ Отменить запись #{apt.id}",
                     callback_data=f"cancel_appointment:{apt.id}"
                 )
-            ]])
+            )
+            
+            # Кнопка карты, если есть адрес салона
+            if salon and salon.gis_link:
+                keyboard_buttons.append(
+                    InlineKeyboardButton(
+                        text="📍 Посмотреть на карте",
+                        url=salon.gis_link
+                    )
+                )
+            
+            # Создаем клавиатуру
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[keyboard_buttons])
 
             await message.answer(text, reply_markup=keyboard, parse_mode="Markdown")
 

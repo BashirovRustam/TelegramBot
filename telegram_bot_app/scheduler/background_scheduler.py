@@ -80,19 +80,15 @@ class AppointmentNotificationScheduler:
                 now = datetime.now()
 
                 # Вычисляем временное окно для уведомлений
-                # Например, если notify_hours_before = 1 и check_interval = 5 минут
-                # То ищем записи, которые начнутся через 55-65 минут
-
+                # Ищем записи, которые начнутся примерно через 1 час от текущего времени
                 margin_minutes = 3  # Окно в ±3 минуты для надежного уведомления
-
-                target_time_start = now + timedelta(
-                    hours=self.notify_hours_before,
-                    minutes=-margin_minutes
-                )
-                target_time_end = now + timedelta(
-                    hours=self.notify_hours_before,
-                    minutes=margin_minutes
-                )
+                
+                # Время, через которое должна начаться запись
+                target_appointment_time = now + timedelta(hours=self.notify_hours_before)
+                
+                # Окно для поиска записей
+                target_time_start = target_appointment_time - timedelta(minutes=margin_minutes)
+                target_time_end = target_appointment_time + timedelta(minutes=margin_minutes)
 
                 logger.info(
                     f"🔍 Checking appointments between "
