@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from sqlalchemy import select, and_
 from telegram_bot_app.db.base import async_session as async_session_maker
 from telegram_bot_app.models.appointment import Appointment, AppointmentStatusEnum
@@ -15,16 +16,19 @@ class AppointmentNotificationScheduler:
     Использует polling БД каждые N минут
     """
 
-    def __init__(self, bot: Bot, check_interval_minutes: int = 1, notify_hours_before: int = 1):
+    def __init__(self, bot: Bot, check_interval_minutes: int = 1, notify_hours_before: int = 1,
+                 timezone: str = "Asia/Almaty"):
         """
         Args:
             bot: Экземпляр aiogram Bot
             check_interval_minutes: Интервал проверки БД в минутах
             notify_hours_before: За сколько часов до записи отправлять уведомление
+            timezone: Часовой пояс для работы с записями (например, 'Asia/Almaty', 'Europe/Moscow')
         """
         self.bot = bot
         self.check_interval = check_interval_minutes * 60  # в секундах
         self.notify_hours_before = notify_hours_before
+        self.timezone = ZoneInfo(timezone)
         self.is_running = False
         self._task = None
 
@@ -77,15 +81,16 @@ class AppointmentNotificationScheduler:
         """
         try:
             async with async_session_maker() as session:
-                now = datetime.now()
+                # Получаем текущее время в нужном часовом поясе
+                now = datetime.now(self.timezone)
 
                 # Вычисляем временное окно для уведомлений
                 # Ищем записи, которые начнутся примерно через 1 час от текущего времени
                 margin_minutes = 3  # Окно в ±3 минуты для надежного уведомления
-                
+
                 # Время, через которое должна начаться запись
                 target_appointment_time = now + timedelta(hours=self.notify_hours_before)
-                
+
                 # Окно для поиска записей
                 target_time_start = target_appointment_time - timedelta(minutes=margin_minutes)
                 target_time_end = target_appointment_time + timedelta(minutes=margin_minutes)
@@ -93,7 +98,8 @@ class AppointmentNotificationScheduler:
                 logger.info(
                     f"🔍 Checking appointments between "
                     f"{target_time_start.strftime('%Y-%m-%d %H:%M')} and "
-                    f"{target_time_end.strftime('%Y-%m-%d %H:%M')}"
+                    f"{target_time_end.strftime('%Y-%m-%d %H:%M')} "
+                    f"(current time: {now.strftime('%Y-%m-%d %H:%M:%S %Z')})"
                 )
 
                 # Находим записи, которые не уведомлены и со статусом BOOKED
@@ -118,13 +124,15 @@ class AppointmentNotificationScheduler:
                 notifications_failed = 0
 
                 for appointment in appointments:
-                    # Создаем datetime для записи
+                    # Создаем datetime для записи в нужном часовом поясе
                     appointment_datetime = datetime.combine(
                         appointment.date,
-                        appointment.time_start
+                        appointment.time_start,
+                        tzinfo=self.timezone
                     )
 
-                    logger.info(f"🔍 Checking appointment #{appointment.id} at {appointment_datetime.strftime('%Y-%m-%d %H:%M')}")
+                    logger.info(
+                        f"🔍 Checking appointment #{appointment.id} at {appointment_datetime.strftime('%Y-%m-%d %H:%M %Z')}")
 
                     # Проверяем, попадает ли запись в целевое окно
                     if target_time_start <= appointment_datetime <= target_time_end:
@@ -156,9 +164,11 @@ class AppointmentNotificationScheduler:
             # Вычисляем точное время до записи
             appointment_datetime = datetime.combine(
                 appointment.date,
-                appointment.time_start
+                appointment.time_start,
+                tzinfo=self.timezone
             )
-            time_until = appointment_datetime - datetime.now()
+            now = datetime.now(self.timezone)
+            time_until = appointment_datetime - now
             hours_left = int(time_until.total_seconds() // 3600)
             minutes_left = int((time_until.total_seconds() % 3600) // 60)
 
@@ -195,7 +205,7 @@ class AppointmentNotificationScheduler:
             logger.info(
                 f"✅ Notification sent for appointment #{appointment.id} "
                 f"to user {appointment.client_id} "
-                f"(appointment at {appointment_datetime.strftime('%Y-%m-%d %H:%M')})"
+                f"(appointment at {appointment_datetime.strftime('%Y-%m-%d %H:%M %Z')})"
             )
 
         except Exception as e:
@@ -205,7 +215,8 @@ class AppointmentNotificationScheduler:
             )
             # Если пользователь заблокировал бота, отмечаем как уведомленное чтобы не пытаться снова
             if "chat not found" in str(e).lower() or "bad request: chat not found" in str(e).lower():
-                logger.info(f"🚫 User {appointment.client_id} has blocked the bot or chat not found. Marking as notified.")
+                logger.info(
+                    f"🚫 User {appointment.client_id} has blocked the bot or chat not found. Marking as notified.")
                 appointment.notified = True
                 await session.commit()
             # Не коммитим изменения для других ошибок, чтобы попробовать еще раз при следующей проверке
@@ -218,7 +229,7 @@ class AppointmentNotificationScheduler:
         text = text.replace('\u200C', '')  # zero-width non-joiner
         text = text.replace('\u200D', '')  # zero-width joiner
         text = text.replace('\uFEFF', '')  # zero-width no-break space
-        
+
         special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
         for char in special_chars:
             text = text.replace(char, f'\\{char}')

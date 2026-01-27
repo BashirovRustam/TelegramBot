@@ -49,16 +49,16 @@ notification_scheduler = None  # Только для polling режима
 async def webhook_monitor_task():
     """Фоновая задача для мониторинга и восстановления webhook"""
     global WEBHOOK_URL, bot_instance
-    
+
     if not WEBHOOK_URL or not bot_instance:
         return
-        
+
     logger.info("🔔 Запуск монитора webhook")
-    
+
     while True:
         try:
             await asyncio.sleep(30)  # Проверяем каждые 30 секунд
-            
+
             webhook_info = await bot_instance.get_webhook_info()
             if webhook_info.url != WEBHOOK_URL:
                 logger.warning(f"⚠️ Webhook сброшен! Текущий: {webhook_info.url}, должно быть: {WEBHOOK_URL}")
@@ -69,7 +69,7 @@ async def webhook_monitor_task():
                 logger.info("🔄 Webhook восстановлен монитором")
             else:
                 logger.debug("✅ Webhook в порядке")
-                
+
         except Exception as e:
             logger.error(f"❌ Ошибка монитора webhook: {e}")
             await asyncio.sleep(60)  # При ошибке ждем дольше
@@ -85,15 +85,15 @@ async def init_bot():
     # Приоритет: UPSTASH_REDIS_URL (для Render), затем REDIS_URL, затем локальный Redis
     upstash_redis_url = os.environ.get("UPSTASH_REDIS_URL")
     redis_url = os.environ.get("REDIS_URL")
-    
+
     logger.info(f"🔍 UPSTASH_REDIS_URL: {'✅ установлен' if upstash_redis_url else '❌ не установлен'}")
     logger.info(f"🔍 REDIS_URL: {'✅ установлен' if redis_url else '❌ не установлен'}")
-    
+
     REDIS_URL = upstash_redis_url or redis_url or "redis://localhost:6379/0"
-    
+
     # Для Upstash Redis просто используем rediss:// URL без дополнительных параметров
     # redis-py автоматически обработает SSL для rediss://
-    
+
     # Скрываем пароль в логах для безопасности
     safe_redis_url = REDIS_URL.split('@')[-1] if '@' in REDIS_URL else REDIS_URL
     logger.info(f"🎯 Используется Redis URL: {safe_redis_url}")
@@ -126,18 +126,19 @@ async def lifespan(app: FastAPI):
     global bot_instance, dp, bot_task, notification_scheduler
 
     logger.info("🚀 Запуск приложения...")
-    
+
     try:
         await init_bot()
         logger.info("✅ Инициализация бота завершена")
-        
+
         # Запускаем планировщик уведомлений
         try:
             from telegram_bot_app.scheduler.background_scheduler import AppointmentNotificationScheduler
             notification_scheduler = AppointmentNotificationScheduler(
                 bot=bot_instance,
                 check_interval_minutes=2,  # Проверяем каждые 2 минуты
-                notify_hours_before=1  # Уведомляем за 1 час
+                notify_hours_before=1,  # Уведомляем за 1 час
+                timezone="Asia/Almaty"  # Часовой пояс Казахстана (UTC+5)
             )
             await notification_scheduler.start()
             logger.info("✅ Background notification scheduler started successfully from main")
@@ -153,7 +154,7 @@ async def lifespan(app: FastAPI):
             logger.info("🔧 Настройка webhook...")
             webhook_info = await bot_instance.get_webhook_info()
             logger.info(f"📋 Текущий webhook: {webhook_info.url}")
-            
+
             # ВСЕГДА устанавливаем webhook для надежности
             logger.info(f"🔄 Установка webhook: {WEBHOOK_URL}")
             await bot_instance.set_webhook(
@@ -161,12 +162,12 @@ async def lifespan(app: FastAPI):
                 drop_pending_updates=True
             )
             logger.info("✅ Webhook установлен принудительно")
-            
+
             # Пауза и повторная проверка
             await asyncio.sleep(2)
             webhook_info_after = await bot_instance.get_webhook_info()
             logger.info(f"🔍 Проверка после установки: {webhook_info_after.url}")
-            
+
             if webhook_info_after.url != WEBHOOK_URL:
                 logger.warning("⚠️ Webhook не установился, пробуем еще раз...")
                 await bot_instance.set_webhook(
@@ -174,7 +175,7 @@ async def lifespan(app: FastAPI):
                     drop_pending_updates=True
                 )
                 logger.info("🔄 Повторная установка webhook завершена")
-                
+
             logger.info(f"🌐 Бот запущен в режиме WEBHOOK. URL: {WEBHOOK_URL}")
         except Exception as e:
             logger.error(f"❌ Ошибка при настройке webhook: {e}")
@@ -233,7 +234,7 @@ async def bot_webhook(request: Request):
         logger.info(f"📨 Получен webhook запрос от {request.client.host}")
         update_data = await request.json()
         logger.info(f"📋 Данные обновления: {update_data.get('update_id', 'unknown')}")
-        
+
         # Детальное логирование типа обновления
         if 'message' in update_data:
             message = update_data['message']
@@ -247,10 +248,10 @@ async def bot_webhook(request: Request):
             logger.info(f"🔘 Callback от пользователя {user_id}: '{data}'")
         else:
             logger.info(f"📦 Тип обновления: {list(update_data.keys())}")
-        
+
         update = types.Update.model_validate(update_data, context={"bot": bot_instance})
         await dp.feed_update(bot_instance, update)
-        
+
         logger.info("✅ Webhook обработан успешно")
         return {"ok": True}
     except Exception as e:
@@ -270,7 +271,6 @@ async def root():
 @app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
     return {"status": "healthy"}
-
 
 
 if __name__ == "__main__":
