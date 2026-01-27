@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta, time
 from typing import List, Dict, Tuple
-import logging  # НОВОЕ
+import logging
+from zoneinfo import ZoneInfo
 from sqlalchemy.ext.asyncio import AsyncSession
 from telegram_bot_app.crud.master_schedule import MasterScheduleCRUD
 from telegram_bot_app.crud.appointment import AppointmentCRUD
@@ -11,10 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class MasterAvailabilityService:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, timezone: str = "Asia/Almaty"):
         self.db = db
         self.schedule_crud = MasterScheduleCRUD(db)
         self.appointment_crud = AppointmentCRUD(db)
+        self.timezone = ZoneInfo(timezone)
 
     async def get_available_dates(
             self,
@@ -111,6 +113,11 @@ class MasterAvailabilityService:
                 selected_date, len(booked_appointments)
             )
 
+            # Получаем текущее время в нужном часовом поясе
+            now = datetime.now(self.timezone)
+            current_date = now.date()
+            current_time_minutes = now.hour * 60 + now.minute
+
             # Собираем все доступные слоты
             all_available_slots = []
 
@@ -119,10 +126,20 @@ class MasterAvailabilityService:
                     schedule.time_from,
                     schedule.time_to,
                     booked_appointments,
-                    service_duration_minutes,
-                    selected_date  # Передаем дату для фильтрации прошедшего времени
+                    service_duration_minutes
                 )
-                all_available_slots.extend(slots)
+
+                # Если выбранная дата - сегодня, фильтруем прошедшее время
+                if selected_date == current_date:
+                    filtered_slots = []
+                    for slot in slots:
+                        slot_time_minutes = slot.hour * 60 + slot.minute
+                        # Оставляем только слоты, которые начинаются после текущего времени
+                        if slot_time_minutes > current_time_minutes:
+                            filtered_slots.append(slot)
+                    all_available_slots.extend(filtered_slots)
+                else:
+                    all_available_slots.extend(slots)
 
             # Удаляем дубликаты и сортируем
             unique_slots = list(set(all_available_slots))
@@ -147,8 +164,7 @@ class MasterAvailabilityService:
             time_from: time,
             time_to: time,
             booked_appointments: List,
-            service_duration_minutes: int,
-            selected_date: date = None
+            service_duration_minutes: int
     ) -> List[time]:
         """Получить доступные слоты для конкретного расписания."""
 
@@ -169,18 +185,6 @@ class MasterAvailabilityService:
         # Генерируем возможные слоты с шагом 30 минут
         available_slots = []
         current_time = start_minutes
-
-        # Если выбрана сегодняшняя дата, фильтруем прошедшее время
-        if selected_date and selected_date == date.today():
-            now = datetime.now()
-            current_minutes = now.hour * 60 + now.minute
-            # Начинаем с текущего времени или следующего доступного слота
-            if current_time < current_minutes:
-                # Находим следующий слот после текущего времени
-                current_time = ((current_minutes // 30) + 1) * 30
-                # Если следующий слот выходит за пределы расписания, возвращаем пустой список
-                if current_time >= end_minutes:
-                    return []
 
         while current_time + service_duration_minutes <= end_minutes:
             slot_end = current_time + service_duration_minutes
@@ -226,15 +230,31 @@ class MasterAvailabilityService:
             if apt.status == AppointmentStatusEnum.BOOKED
         ]
 
+        # Получаем текущее время в нужном часовом поясе
+        now = datetime.now(self.timezone)
+        current_date = now.date()
+        current_time_minutes = now.hour * 60 + now.minute
+
         # Для каждого расписания проверяем доступность
         for schedule in schedules:
-            if self._has_available_time_slots(
-                    schedule.time_from,
-                    schedule.time_to,
-                    booked_appointments,
-                    service_duration_minutes
-            ):
-                return True
+            # Получаем все возможные слоты
+            slots = self._get_time_slots_for_schedule(
+                schedule.time_from,
+                schedule.time_to,
+                booked_appointments,
+                service_duration_minutes
+            )
+
+            # Если проверяем сегодняшний день, учитываем текущее время
+            if check_date == current_date:
+                for slot in slots:
+                    slot_time_minutes = slot.hour * 60 + slot.minute
+                    if slot_time_minutes > current_time_minutes:
+                        return True
+            else:
+                # Для будущих дней достаточно наличия хотя бы одного слота
+                if slots:
+                    return True
 
         return False
 

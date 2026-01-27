@@ -37,7 +37,7 @@ async def start_booking(message: Message, state: FSMContext):
         salon_name = salon.name
         if len(salon_name) > 30:
             salon_name = salon_name[:27] + "..."
-        
+
         row.append(
             InlineKeyboardButton(
                 text=f"🏛️ {salon_name}",
@@ -299,8 +299,28 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext, 
         from telegram_bot_app.celery_app.tasks import _send_confirmation_async
         await _send_confirmation_async(result['id'], bot)
 
-        from datetime import datetime
+        from datetime import datetime, time
+        from zoneinfo import ZoneInfo
+
         date_obj = datetime.strptime(selected_date, "%Y-%m-%d").date()
+
+        # Парсим время
+        if ":" in selected_time:
+            hour, minute = map(int, selected_time.split(":"))
+            time_obj = time(hour=hour, minute=minute)
+        else:
+            time_obj = time(0, 0)
+
+        # Создаем datetime для записи
+        appointment_datetime = datetime.combine(date_obj, time_obj, tzinfo=ZoneInfo("Asia/Almaty"))
+
+        # Получаем текущее время
+        now = datetime.now(ZoneInfo("Asia/Almaty"))
+
+        # Вычисляем разницу во времени
+        time_until_appointment = appointment_datetime - now
+        minutes_until_appointment = int(time_until_appointment.total_seconds() / 60)
+
         months = {
             1: 'января', 2: 'февраля', 3: 'марта', 4: 'апреля',
             5: 'мая', 6: 'июня', 7: 'июля', 8: 'августа',
@@ -310,7 +330,8 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext, 
 
         formatted_date = f"{date_obj.day} {months[date_obj.month]} ({weekdays[date_obj.weekday()]})"
 
-        await callback.message.edit_text(
+        # Базовое сообщение подтверждения
+        confirmation_message = (
             f"✅ **Запись успешно создана!**\n\n"
             f"📋 Номер записи: #{result['id']}\n"
             f"🏛️ Салон: {data.get('salon_name', 'Не указан')}\n"
@@ -322,8 +343,13 @@ async def create_appointment_record(callback: CallbackQuery, state: FSMContext, 
             f"⏱️ Длительность: {result['service_duration']} минут\n\n"
             f"📝 Приходите за 5 минут до начала записи\n"
             f"📱 Для отмены записи используйте кнопку '📋 Мои записи'\n"
-            f"🔔 Вам придет напоминание за 1 час до визита"
         )
+
+        # Добавляем информацию о напоминании только если до записи больше 59 минут
+        if minutes_until_appointment > 59:
+            confirmation_message += f"🔔 Вам придет напоминание за 1 час до визита"
+
+        await callback.message.edit_text(confirmation_message)
     else:
         await callback.message.edit_text(
             "❌ **Ошибка создания записи**\n\n"
@@ -651,7 +677,7 @@ async def back_handler(callback: CallbackQuery, state: FSMContext):
             salon_name = salon.name
             if len(salon_name) > 30:
                 salon_name = salon_name[:27] + "..."
-            
+
             row.append(
                 InlineKeyboardButton(
                     text=f"🏛️ {salon_name}",

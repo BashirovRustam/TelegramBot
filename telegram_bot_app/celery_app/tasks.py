@@ -70,41 +70,18 @@ async def _send_confirmation_async(appointment_id: int, bot: Bot = None):
             else:
                 address_text = f"📍 Адрес: {appointment.salon.address}"
 
-            # Проверяем, нужно ли показывать уведомление за 1 час
-            now = datetime.now()
-            appointment_datetime = datetime.combine(appointment.date, appointment.time_start)
-            time_diff = appointment_datetime - now
-            time_diff_minutes = time_diff.total_seconds() / 60
-
-            # Формируем сообщение в зависимости от времени до записи
-            if time_diff_minutes < 59:
-                # Если до записи меньше 59 минут, не показываем уведомление за 1 час
-                message = (
-                    f"✅ *Запись подтверждена!*\n\n"
-                    f"📋 Номер записи: #{appointment.id}\n"
-                    f"🏛️ Салон: {appointment.salon.name}\n"
-                    f"✨ Услуга: {appointment.service.name}\n"
-                    f"👨‍💼 Мастер: {appointment.master.user.full_name}\n"
-                    f"📅 Дата: {formatted_date}\n"
-                    f"🕐 Время: {appointment.time_start.strftime('%H:%M')}\n"
-                    f"💰 Стоимость: {appointment.service.price} тг.\n"
-                    f"{address_text}\n\n"
-                    f"Ждем вас! 😊"
-                )
-            else:
-                # Если до записи 59 минут или больше, показываем уведомление за 1 час
-                message = (
-                    f"✅ *Запись подтверждена!*\n\n"
-                    f"📋 Номер записи: #{appointment.id}\n"
-                    f"🏛️ Салон: {appointment.salon.name}\n"
-                    f"✨ Услуга: {appointment.service.name}\n"
-                    f"👨‍💼 Мастер: {appointment.master.user.full_name}\n"
-                    f"📅 Дата: {formatted_date}\n"
-                    f"🕐 Время: {appointment.time_start.strftime('%H:%M')}\n"
-                    f"💰 Стоимость: {appointment.service.price} тг.\n"
-                    f"{address_text}\n\n"
-                    f"Ждем вас! За 1 час до записи придет напоминание 🔔"
-                )
+            message = (
+                f"✅ *Запись подтверждена!*\n\n"
+                f"📋 Номер записи: #{appointment.id}\n"
+                f"🏛️ Салон: {appointment.salon.name}\n"
+                f"✨ Услуга: {appointment.service.name}\n"
+                f"👨‍💼 Мастер: {appointment.master.user.full_name}\n"
+                f"📅 Дата: {formatted_date}\n"
+                f"🕐 Время: {appointment.time_start.strftime('%H:%M')}\n"
+                f"💰 Стоимость: {appointment.service.price} тг.\n"
+                f"{address_text}\n\n"
+                f"Ждем вас! За 1 час до записи придет напоминание 🔔"
+            )
 
             await bot.send_message(
                 chat_id=appointment.client.telegram_id,
