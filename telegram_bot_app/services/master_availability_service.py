@@ -119,7 +119,8 @@ class MasterAvailabilityService:
                     schedule.time_from,
                     schedule.time_to,
                     booked_appointments,
-                    service_duration_minutes
+                    service_duration_minutes,
+                    selected_date  # Передаем дату для фильтрации прошедшего времени
                 )
                 all_available_slots.extend(slots)
 
@@ -146,7 +147,8 @@ class MasterAvailabilityService:
             time_from: time,
             time_to: time,
             booked_appointments: List,
-            service_duration_minutes: int
+            service_duration_minutes: int,
+            selected_date: date = None
     ) -> List[time]:
         """Получить доступные слоты для конкретного расписания."""
 
@@ -167,6 +169,18 @@ class MasterAvailabilityService:
         # Генерируем возможные слоты с шагом 30 минут
         available_slots = []
         current_time = start_minutes
+
+        # Если выбрана сегодняшняя дата, фильтруем прошедшее время
+        if selected_date and selected_date == date.today():
+            now = datetime.now()
+            current_minutes = now.hour * 60 + now.minute
+            # Начинаем с текущего времени или следующего доступного слота
+            if current_time < current_minutes:
+                # Находим следующий слот после текущего времени
+                current_time = ((current_minutes // 30) + 1) * 30
+                # Если следующий слот выходит за пределы расписания, возвращаем пустой список
+                if current_time >= end_minutes:
+                    return []
 
         while current_time + service_duration_minutes <= end_minutes:
             slot_end = current_time + service_duration_minutes
