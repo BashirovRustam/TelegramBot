@@ -16,10 +16,11 @@ from telegram_bot_app.bot.handlers.start import router as start_router
 from telegram_bot_app.bot.handlers.FSM_handlers_clean import router as booking_router
 from telegram_bot_app.bot.handlers.my_appointments_hendler import router as my_appointments_router
 
-from telegram_bot_app.middleware.action_rate_limit_middleware import ActionRateLimitMiddleware
-
 # Импортируем планировщик
 from telegram_bot_app.scheduler.background_scheduler import AppointmentNotificationScheduler
+
+# Импортируем middleware для rate limiting
+from telegram_bot_app.middleware.action_rate_limit_middleware import ActionRateLimitMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -81,15 +82,15 @@ async def main():
         # Приоритет: UPSTASH_REDIS_URL (для Render), затем REDIS_URL, затем локальный Redis
         upstash_redis_url = os.environ.get("UPSTASH_REDIS_URL")
         redis_url = os.environ.get("REDIS_URL")
-        
+
         logger.info(f"🔍 UPSTASH_REDIS_URL: {'✅ установлен' if upstash_redis_url else '❌ не установлен'}")
         logger.info(f"🔍 REDIS_URL: {'✅ установлен' if redis_url else '❌ не установлен'}")
-        
+
         REDIS_URL = upstash_redis_url or redis_url or "redis://localhost:6379/0"
-        
+
         # Для Upstash Redis просто используем rediss:// URL без дополнительных параметров
         # redis-py автоматически обработает SSL для rediss://
-        
+
         # Скрываем пароль в логах для безопасности
         safe_redis_url = REDIS_URL.split('@')[-1] if '@' in REDIS_URL else REDIS_URL
         logger.info(f"🎯 Используется Redis URL: {safe_redis_url}")
@@ -109,14 +110,20 @@ async def main():
         logger.info("✅ Бот инициализирован")
 
         # =========================
-        # 4️⃣ DISPATCHER
+        # 4️⃣ DISPATCHER + MIDDLEWARE
         # =========================
         dp = Dispatcher(storage=storage, bot=bot)
 
         # Подключаем middleware для rate limiting
-        rate_limit_middleware = ActionRateLimitMiddleware(redis_client)
-        dp.callback_query.middleware(rate_limit_middleware)
-        logger.info("✅ Rate limiting middleware подключен")
+        # ВАЖНО: middleware должен быть подключен ДО регистрации роутеров
+        try:
+            rate_limit_middleware = ActionRateLimitMiddleware(redis_client)
+            dp.callback_query.middleware(rate_limit_middleware)
+            logger.info("✅ Rate limiting middleware подключен")
+        except Exception as e:
+            logger.error(f"❌ Ошибка подключения rate limiting middleware: {e}", exc_info=True)
+            # Продолжаем работу даже если middleware не подключен
+            logger.warning("⚠️ Бот работает БЕЗ rate limiting")
 
         # Регистрируем роутеры
         dp.include_router(start_router)
