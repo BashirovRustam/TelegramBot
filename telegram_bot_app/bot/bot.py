@@ -16,6 +16,8 @@ from telegram_bot_app.bot.handlers.start import router as start_router
 from telegram_bot_app.bot.handlers.FSM_handlers_clean import router as booking_router
 from telegram_bot_app.bot.handlers.my_appointments_hendler import router as my_appointments_router
 
+from telegram_bot_app.middleware.action_rate_limit_middleware import ActionRateLimitMiddleware
+
 # Импортируем планировщик
 from telegram_bot_app.scheduler.background_scheduler import AppointmentNotificationScheduler
 
@@ -110,6 +112,11 @@ async def main():
         # 4️⃣ DISPATCHER
         # =========================
         dp = Dispatcher(storage=storage, bot=bot)
+
+        # Подключаем middleware для rate limiting
+        rate_limit_middleware = ActionRateLimitMiddleware(redis_client)
+        dp.callback_query.middleware(rate_limit_middleware)
+        logger.info("✅ Rate limiting middleware подключен")
 
         # Регистрируем роутеры
         dp.include_router(start_router)
