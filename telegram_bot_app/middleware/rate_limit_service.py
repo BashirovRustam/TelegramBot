@@ -43,6 +43,7 @@ class RateLimitService:
     ) -> Tuple[bool, Optional[int]]:
         """
         Проверяет, не превышен ли лимит для пользователя
+        Использует атомарные операции для предотвращения race conditions
         
         Args:
             user_id: ID пользователя
@@ -57,30 +58,33 @@ class RateLimitService:
             limit_config = RateLimitConfig.get_limit(action)
             key = self._get_key(user_id, action)
             
-            # Получаем текущее количество запросов
-            current_count = await self.redis.get(key)
+            # Используем атомарную операцию: проверяем и увеличиваем счетчик
+            async with self.redis.pipeline() as pipe:
+                # Получаем текущее значение
+                await pipe.get(key)
+                # Увеличиваем счетчик
+                await pipe.incr(key)
+                # Устанавливаем TTL если это первый запрос
+                await pipe.expire(key, limit_config.window_seconds, nx=True)
+                results = await pipe.execute()
             
-            if current_count is None:
-                # Первый запрос - разрешаем
-                logger.debug(f"First request for user {user_id}, action {action}")
-                return True, None
+            current_count_before = results[0]
+            new_count = results[1]
             
-            current_count = int(current_count)
-            
-            # Проверяем лимит
-            if current_count >= limit_config.max_requests:
-                # Лимит превышен - получаем TTL
+            # Если счетчик превысил лимит, откатываем увеличение
+            if new_count > limit_config.max_requests:
+                await self.redis.decr(key)
                 ttl = await self.redis.ttl(key)
                 logger.warning(
                     f"Rate limit exceeded for user {user_id}, action {action}. "
-                    f"Count: {current_count}/{limit_config.max_requests}, TTL: {ttl}s"
+                    f"Count: {new_count}/{limit_config.max_requests}, TTL: {ttl}s"
                 )
                 return False, ttl if ttl > 0 else limit_config.window_seconds
             
             # Лимит не превышен
             logger.debug(
                 f"Rate limit OK for user {user_id}, action {action}. "
-                f"Count: {current_count}/{limit_config.max_requests}"
+                f"Count: {new_count}/{limit_config.max_requests}"
             )
             return True, None
             
@@ -127,6 +131,36 @@ class RateLimitService:
             
         except Exception as e:
             logger.error(f"Error incrementing counter: {e}", exc_info=True)
+            return 0
+    
+    async def decrement_counter(self, user_id: int, action: str) -> int:
+        """
+        Уменьшает счетчик запросов для пользователя (откат при ошибке)
+        
+        Args:
+            user_id: ID пользователя
+            action: Название действия
+            
+        Returns:
+            int: Новое значение счетчика
+        """
+        try:
+            key = self._get_key(user_id, action)
+            
+            # Уменьшаем счетчик, но не ниже 0
+            current = await self.redis.get(key)
+            if current and int(current) > 0:
+                new_count = await self.redis.decr(key)
+                logger.info(
+                    f"Decremented rate limit counter for user {user_id}, action {action}. "
+                    f"New count: {new_count}"
+                )
+                return new_count
+            
+            return 0
+            
+        except Exception as e:
+            logger.error(f"Error decrementing counter: {e}", exc_info=True)
             return 0
     
     async def reset_limit(self, user_id: int, action: str) -> bool:

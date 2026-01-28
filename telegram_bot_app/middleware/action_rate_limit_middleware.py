@@ -53,6 +53,7 @@ class ActionRateLimitMiddleware(BaseMiddleware):
         
         # Если действие не требует проверки лимита - пропускаем
         if action is None:
+            logger.debug(f"No rate limit check needed for event type: {type(event)}")
             return await handler(event, data)
         
         # Получаем ID пользователя
@@ -61,11 +62,15 @@ class ActionRateLimitMiddleware(BaseMiddleware):
             logger.warning("Could not extract user_id from event")
             return await handler(event, data)
         
-        # Проверяем лимит
+        logger.debug(f"Rate limit check: user_id={user_id}, action={action}")
+        
+        # Проверяем лимит (атомарная операция также увеличивает счетчик)
         is_allowed, retry_after = await self.rate_limit_service.check_rate_limit(
             user_id=user_id,
             action=action
         )
+        
+        logger.debug(f"Rate limit result: allowed={is_allowed}, retry_after={retry_after}")
         
         if not is_allowed:
             # Лимит превышен - отправляем сообщение пользователю
@@ -77,13 +82,15 @@ class ActionRateLimitMiddleware(BaseMiddleware):
             return None
         
         # Лимит не превышен - выполняем handler
-        result = await handler(event, data)
-        
-        # После успешного выполнения увеличиваем счетчик
-        # ВАЖНО: увеличиваем только после успешного выполнения handler
-        await self.rate_limit_service.increment_counter(user_id, action)
-        
-        return result
+        # Счетчик уже увеличен атомарно в check_rate_limit
+        try:
+            result = await handler(event, data)
+            return result
+        except Exception as e:
+            # Если handler упал с ошибкой, откатываем счетчик
+            logger.error(f"Handler failed for user {user_id}, action {action}: {e}")
+            await self.rate_limit_service.decrement_counter(user_id, action)
+            raise
     
     def _detect_action(self, event: TelegramObject, data: Dict[str, Any]) -> str | None:
         """
