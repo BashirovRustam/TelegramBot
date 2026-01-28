@@ -96,7 +96,7 @@ async def main():
         logger.info(f"🎯 Используется Redis URL: {safe_redis_url}")
 
         # Подключение через from_url - redis-py автоматически обработает SSL для rediss://
-        redis_client = redis.from_url(REDIS_URL, decode_responses=False)
+        redis_client = redis.from_url(REDIS_URL, decode_responses=True)
         storage = RedisStorage(redis_client)
         logger.info("✅ Redis подключен")
 
@@ -119,7 +119,8 @@ async def main():
         try:
             rate_limit_middleware = ActionRateLimitMiddleware(redis_client)
             dp.callback_query.middleware(rate_limit_middleware)
-            logger.info("✅ Rate limiting middleware подключен")
+            dp.message.middleware(rate_limit_middleware)
+            logger.info("✅ Rate limiting middleware подключен для callback_query и message")
         except Exception as e:
             logger.error(f"❌ Ошибка подключения rate limiting middleware: {e}", exc_info=True)
             # Продолжаем работу даже если middleware не подключен

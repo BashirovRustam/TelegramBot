@@ -116,7 +116,8 @@ class MasterAvailabilityService:
             # Получаем текущее время в нужном часовом поясе
             now = datetime.now(self.timezone)
             current_date = now.date()
-            current_time_minutes = now.hour * 60 + now.minute
+            # Добавляем 5 минут буфера для завершения записи
+            current_time_minutes = now.hour * 60 + now.minute + 5
 
             # Собираем все доступные слоты
             all_available_slots = []
@@ -134,8 +135,8 @@ class MasterAvailabilityService:
                     filtered_slots = []
                     for slot in slots:
                         slot_time_minutes = slot.hour * 60 + slot.minute
-                        # Оставляем только слоты, которые начинаются после текущего времени
-                        if slot_time_minutes > current_time_minutes:
+                        # Оставляем только слоты, которые начинаются после текущего времени (с учетом буфера)
+                        if slot_time_minutes >= current_time_minutes:
                             filtered_slots.append(slot)
                     all_available_slots.extend(filtered_slots)
                 else:
@@ -233,7 +234,8 @@ class MasterAvailabilityService:
         # Получаем текущее время в нужном часовом поясе
         now = datetime.now(self.timezone)
         current_date = now.date()
-        current_time_minutes = now.hour * 60 + now.minute
+        # Добавляем 5 минут буфера для завершения записи
+        current_time_minutes = now.hour * 60 + now.minute + 5
 
         # Для каждого расписания проверяем доступность
         for schedule in schedules:
@@ -249,7 +251,7 @@ class MasterAvailabilityService:
             if check_date == current_date:
                 for slot in slots:
                     slot_time_minutes = slot.hour * 60 + slot.minute
-                    if slot_time_minutes > current_time_minutes:
+                    if slot_time_minutes >= current_time_minutes:
                         return True
             else:
                 # Для будущих дней достаточно наличия хотя бы одного слота
